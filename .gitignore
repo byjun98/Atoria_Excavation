@@ -1,0 +1,119 @@
+# Unity generated folders
+/Library/
+/Logs/
+/Temp/
+/Obj/
+/UserSettings/
+/MemoryCaptures/
+
+# Local workflow state
+/.codex/
+
+# Build and export outputs
+/Build/
+/Builds/
+*.apk
+*.aab
+*.unitypackage
+*.zip
+*.log
+
+# Signing, secrets, and local environment files
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.pem
+*.key
+*.mobileprovision
+.env
+.env.*
+
+# Internal rebuild documentation
+/TECH/
+/ANALYSIS/
+/REBUILD_PLAN.md
+
+# Internal asset import logs and QA captures
+/Assets/CREDITS.txt
+/Assets/CREDITS.txt.meta
+/Assets/Screenshots/
+/Assets/Screenshots.meta
+
+# Commercial or non-public imported asset dumps
+/Assets/Audio/
+/Assets/Audio.meta
+/Assets/Sprites/
+/Assets/Sprites.meta
+/Assets/Resources/references/
+/Assets/Resources/references.meta
+/Assets/Resources/FX/
+/Assets/Resources/FX.meta
+/Assets/Resources/FX/ProjectileParticles/
+/Assets/Resources/FX/Projectiles/
+/Assets/Plugins/
+/Assets/Plugins.meta
+/Assets/Shader/*
+!/Assets/Shader.meta
+!/Assets/Shader/TextMeshPro*.shader
+!/Assets/Shader/TextMeshPro*.shader.meta
+
+# Private editor and reconstruction utilities
+/Assets/Editor/
+/Assets/Editor.meta
+
+# Internal notes inside asset folders
+*.md
+*.md.meta
+
+# Non-public localization/debug/sample resources
+/Assets/Resources/Cursors/
+/Assets/Resources/Cursors.meta
+/Assets/Resources/I2Languages.asset
+/Assets/Resources/I2Languages.asset.meta
+/Assets/Resources/ARIAL*
+/Assets/Resources/ARIAL*.meta
+/Assets/Resources/color gradient presets/
+/Assets/Resources/color gradient presets.meta
+/Assets/Resources/fonts & materials/
+/Assets/Resources/fonts & materials.meta
+/Assets/Resources/sprite assets/
+/Assets/Resources/sprite assets.meta
+/Assets/Resources/style sheets/
+/Assets/Resources/style sheets.meta
+/Assets/Resources/Sprites/UI/Typography/Title_Atoria.png
+/Assets/Resources/Sprites/UI/Typography/Title_Atoria.png.meta
+/Assets/Resources/TextAnimatorSettings.asset
+/Assets/Resources/TextAnimatorSettings.asset.meta
+/Assets/Resources/DebugUICanvas.prefab
+/Assets/Resources/DebugUICanvas.prefab.meta
+/Assets/Resources/DebugUIPersistentCanvas.prefab
+/Assets/Resources/DebugUIPersistentCanvas.prefab.meta
+/Assets/Resources/PerformanceTestRunInfo.json
+/Assets/Resources/PerformanceTestRunInfo.json.meta
+/Assets/Resources/PerformanceTestRunSettings.json
+/Assets/Resources/PerformanceTestRunSettings.json.meta
+/Assets/Resources/Sprites/Ore/Broken/
+/Assets/Resources/Sprites/Ore/Broken.meta
+
+# Empty folder metadata
+/Assets/Animations.meta
+/Assets/Materials.meta
+/Assets/Prefabs.meta
+
+# Common IDE/editor noise
+/.vs/
+/.idea/
+*.csproj
+*.sln
+*.user
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
