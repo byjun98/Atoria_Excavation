@@ -65,6 +65,7 @@
 # Internal notes inside asset folders
 *.md
 *.md.meta
+!/README.md
 
 # Non-public localization/debug/sample resources
 /Assets/Resources/Cursors/
