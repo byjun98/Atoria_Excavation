@@ -56,9 +56,9 @@ https://github.com/user-attachments/assets/VIDEO_ID
 
 ### 스크린샷
 
-현재 README에는 스크린샷을 넣을 자리를 먼저 만들어 두었습니다. 실제 이미지를 추가할 때 아래 경로에 맞춰 넣으면 됩니다.
+README용 스크린샷은 `docs/screenshots`에 정리했습니다.
 
-| 화면 | 설명 | 예정 파일 |
+| 화면 | 설명 | 파일 |
 | --- | --- | --- |
 | 시작 화면 | 게임 진입, 저장 데이터 로드, 기본 메뉴 흐름 | `docs/screenshots/01_start.png` |
 | 발굴 세션 | 커서 중심 범위 채굴, 암석 파괴, 원석 획득 | `docs/screenshots/02_mining-session.png` |
@@ -69,17 +69,16 @@ https://github.com/user-attachments/assets/VIDEO_ID
 | 자동 발굴터 | 방치형 수익, 속도/재료 강화 | `docs/screenshots/07_the-mine.png` |
 | 엔딩/도전 | 장기 목표와 진행도 확인 | `docs/screenshots/08_ending.png` |
 
-이미지를 넣은 뒤에는 아래 주석 예시를 실제 태그로 바꾸면 됩니다.
-
-```html
-<!--
 <p align="center">
+  <img src="./docs/screenshots/01_start.png" width="260" alt="Start screen">
   <img src="./docs/screenshots/02_mining-session.png" width="260" alt="Mining session">
+  <img src="./docs/screenshots/03_session-result.png" width="260" alt="Session result">
   <img src="./docs/screenshots/04_skill-tree.png" width="260" alt="Skill tree">
   <img src="./docs/screenshots/05_anvil.png" width="260" alt="Anvil">
+  <img src="./docs/screenshots/06_artifacts.png" width="260" alt="Artifacts">
+  <img src="./docs/screenshots/07_the-mine.png" width="260" alt="The Mine">
+  <img src="./docs/screenshots/08_ending.png" width="260" alt="Records and goals">
 </p>
--->
-```
 
 ## 게임 루프
 
