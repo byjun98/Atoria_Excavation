@@ -46,19 +46,12 @@
 
 ### 플레이 영상
 
-영상은 추후 추가 예정입니다.
+초기 버전과 최후반부 버전의 게임플레이는 아래 GIF로 확인할 수 있습니다.
 
-예정 위치:
-
-```text
-docs/video/atoria-gameplay.mp4
-```
-
-GitHub에 영상을 추가할 때는 아래처럼 교체할 수 있습니다.
-
-```md
-https://github.com/user-attachments/assets/VIDEO_ID
-```
+<p align="center">
+  <img src="./docs/screenshots/atoria.gif" width="320" alt="초기 버전 게임플레이">
+  <img src="./docs/screenshots/ato2.gif" width="320" alt="최후반부 버전 게임플레이">
+</p>
 
 ### 스크린샷
 
