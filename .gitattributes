@@ -18,3 +18,5 @@
 *.mp3 binary
 *.ttf binary
 *.dll binary
+*.glb binary
+*.gif binary

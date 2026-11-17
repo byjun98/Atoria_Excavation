@@ -6,11 +6,11 @@ using UnityEngine;
 
 namespace Rebuild.Saving
 {
-    /// <summary>single source of save/load truth.
-    /// Singleton on MiningSessionRoot. Scans every active MonoBehaviour in the scene for
-    /// <see cref="IDataPersistence"/> implementers, calls them in load order on Start, and
-    /// reverse-calls them on Save (manual / auto-tick / OnApplicationQuit / OnApplicationPause).
-    /// JSON file lives at <c>Application.persistentDataPath/rebuild_keeponmining.json</c>.</summary>
+
+
+
+
+
     public sealed class DataPersistenceManager : MonoBehaviour
     {
         public static DataPersistenceManager Instance { get; private set; }
@@ -63,7 +63,7 @@ namespace Rebuild.Saving
         public void CollectImplementers()
         {
             _all.Clear();
-            // FindObjectsByType returns active + inactive; we still need cast-only-IDataPersistence MBs.
+
             var monos = UnityEngine.Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             foreach (var mb in monos)
             {
@@ -79,6 +79,12 @@ namespace Rebuild.Saving
                 _current = new GameDataDTO();
                 Debug.Log("[Rebuild.Saving] No existing save → starting fresh.");
             }
+            else if (RefundRetiredMineSpeedRanks(_current))
+            {
+
+
+                _file.Save(_current);
+            }
             for (int i = 0; i < _all.Count; i++)
             {
                 try { _all[i].LoadData(_current); }
@@ -86,6 +92,20 @@ namespace Rebuild.Saving
             }
             _hasLoaded = true;
             OnLoaded?.Invoke();
+        }
+
+        static bool RefundRetiredMineSpeedRanks(GameDataDTO data)
+        {
+            const int lastEffectiveLegacyRank = 8;
+            if (data.mineSpeedLevel <= lastEffectiveLegacyRank) return false;
+
+            int gold = (int)Rebuild.Mining.OreType.Gold;
+            if (data.oreCounts == null || data.oreCounts.Length <= gold)
+                Array.Resize(ref data.oreCounts, Rebuild.Mining.OreLocalization.AllNamesKr.Count);
+            long refund = data.mineSpeedLevel >= 10 ? 4500L : 1500L;
+            data.oreCounts[gold] = Math.Min(data.oreCounts[gold], long.MaxValue - refund) + refund;
+            data.mineSpeedLevel = lastEffectiveLegacyRank;
+            return true;
         }
 
         public void NewGame()
@@ -120,8 +140,8 @@ namespace Rebuild.Saving
 
         IEnumerator AutoSaveLoop()
         {
-            // Wait until the first manual / Start-driven load completes before auto-saving over
-            // a half-initialised DTO.
+
+
             while (!_hasLoaded) yield return null;
             var wait = new WaitForSecondsRealtime(autoSaveIntervalSec);
             while (autoSaveEnabled)

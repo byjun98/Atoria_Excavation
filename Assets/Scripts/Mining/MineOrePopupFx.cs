@@ -5,21 +5,21 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>idle TheMine tick popup. Mirrors original
-    /// <c>MineMaterialMechanics.PopUpText</c>: when the auto-mine ticks, one ore icon spawns at
-    /// the mine entrance, hovers briefly, then lerps to the left-side ResourcePanel row for that
-    /// ore. Arrival fires a one-shot SFX + row pulse so the player feels the credit landing.
-    /// <para>Pattern: <see cref="PickaxeSwingFx"/> / <see cref="OreDropPopupFx"/> — one-shot
-    /// component, auto-destroys at the end of its 3-stage coroutine. Counter increment is NOT
-    /// gated on arrival (the bar count was already credited by <c>MineManager.EmitTick</c>); this
-    /// is purely cosmetic feedback.</para>
-    /// </summary>
+
+
+
+
+
+
+
+
+
     public sealed class MineOrePopupFx : MonoBehaviour
     {
         const float ScaleInDuration = 0.18f;
         const float HoverDuration = 0.20f;
         const float MoveDuration = 0.35f;
-        const float ArrivalScale = 0.45f;   // shrink as the popup is "absorbed" into the row
+        const float ArrivalScale = 0.45f;
 
         Image _img;
         RectTransform _rt;
@@ -30,9 +30,9 @@ namespace Rebuild.Mining
         bool _initialized;
         Coroutine _running;
 
-        /// <summary>Spawn one popup. <paramref name="parent"/> is the common ancestor of source +
-        /// target (typically the MainMenu canvas RectTransform) so both endpoints share a coord
-        /// space. <paramref name="spawnDelay"/> staggers bursts when a tick drops multiple ore.</summary>
+
+
+
         public static MineOrePopupFx Spawn(RectTransform parent,
                                             Vector2 startAnchoredPos,
                                             Vector2 targetAnchoredPos,
@@ -80,8 +80,8 @@ namespace Rebuild.Mining
 
         void OnEnable()
         {
-            // Init() drives the first start; OnEnable only re-runs on rare canvas re-activation
-            // (the popup is short-lived so this practically never fires).
+
+
             if (!_initialized) return;
             if (_running != null) StopCoroutine(_running);
             _running = StartCoroutine(Lifecycle());
@@ -89,8 +89,8 @@ namespace Rebuild.Mining
 
         void OnDisable()
         {
-            // If the panel hides mid-flight (tab switch), drop the popup so it doesn't resurrect
-            // when the panel re-activates and target a now-irrelevant row.
+
+
             if (!_initialized) return;
             if (_running != null) StopCoroutine(_running);
             _running = null;
@@ -99,7 +99,7 @@ namespace Rebuild.Mining
 
         IEnumerator Lifecycle()
         {
-            // Pre-spawn stagger so a tick that drops N ore doesn't show N popups at frame 0.
+
             float wait = 0f;
             while (wait < _spawnDelay)
             {
@@ -107,7 +107,7 @@ namespace Rebuild.Mining
                 yield return null;
             }
 
-            // Scale-in with ease-out (Sin(k * PI/2) is exactly 0→1 with smooth landing).
+
             float t = 0f;
             while (t < ScaleInDuration)
             {
@@ -119,7 +119,7 @@ namespace Rebuild.Mining
             }
             _rt.localScale = Vector3.one;
 
-            // Brief hover so the player registers what the ore is.
+
             wait = 0f;
             while (wait < HoverDuration)
             {
@@ -127,8 +127,8 @@ namespace Rebuild.Mining
                 yield return null;
             }
 
-            // Fly to target with SmoothStep ease-in-out + shrink to ArrivalScale on
-            // arrival so the popup visually "merges" into the row icon.
+
+
             t = 0f;
             Vector2 startPos = _rt.anchoredPosition;
             while (t < MoveDuration)
@@ -148,7 +148,7 @@ namespace Rebuild.Mining
                 yield return null;
             }
 
-            // Arrival — fire the onArrived hook (SFX + row pulse), then destroy.
+
             try { _onArrived?.Invoke(); }
             catch (Exception e) { Debug.LogException(e); }
             Destroy(gameObject);

@@ -5,12 +5,12 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>a hoverable / clickable flower drop.
-    /// Lives under Canvas_Game (alongside TileRows / Rocks). Spawned by <see cref="FlowerMechanics"/>
-    /// on rock destroy when the SpringSeason talent is chosen. Auto-fades after <c>lifetime</c>
-    /// or pays out +2 random ore on the first pointer contact (hover or tap) and disappears.
-    /// (HOVER_MINING_REFERENCE.md §E) — Flower uses Option A (single-shot enter)
-    /// rather than the channel pattern Rock uses, because the payout is a one-time bonus.</summary>
+
+
+
+
+
+
     [RequireComponent(typeof(Image))]
     public sealed class Flower : MonoBehaviour, IPointerEnterHandler, IPointerClickHandler
     {
@@ -33,23 +33,23 @@ namespace Rebuild.Mining
         {
             _consumed = false;
             _img.raycastTarget = true;
-            // prefer the user-authored Flower PNG; fall back to runtime rosette.
+
             var userFlower = SpriteLibrary.GetFlowerSprite();
             if (userFlower != null)
             {
                 _img.sprite = userFlower;
                 _img.preserveAspect = true;
-                _img.color = Color.white; // user art carries its own color
+                _img.color = Color.white;
             }
             else
             {
                 _img.sprite = FireSpriteFactory.GetFlower();
                 _img.preserveAspect = false;
-                // Random pastel tint so multiple flowers feel distinct.
+
                 float hue = UnityEngine.Random.value;
                 _img.color = Color.HSVToRGB(hue, 0.55f, 1.0f);
             }
-            // Start small + scale up (spawn punch).
+
             _rt.localScale = Vector3.one * 0.2f;
             if (_lifeRoutine != null) StopCoroutine(_lifeRoutine);
             _lifeRoutine = StartCoroutine(Lifecycle());
@@ -66,15 +66,15 @@ namespace Rebuild.Mining
 
             if (GoldAndOreMechanics.Instance != null)
             {
-                // Pick a random ore weighted same as RockSpawner — Shell keeps it simple: uniform random across 8.
+
                 var ore = (OreType)UnityEngine.Random.Range(0, 8);
                 GoldAndOreMechanics.Instance.AddOre(ore, oreBonus);
                 Rebuild.Audio.OverlappingSounds.Instance?.PlayPop();
             }
-            // FlowerPop SFX in addition to OverlappingSounds.PlayPop. Independent
-            // channel so multiple flower pops within one frame layer naturally.
+
+
             Rebuild.Audio.AudioManager.Instance?.Play("FlowerPop");
-            // independent click counter (separate from rock clicks).
+
             Rebuild.Stats.StatsManager.Instance?.RecordFlowerClicked();
             if (_lifeRoutine != null) StopCoroutine(_lifeRoutine);
             StartCoroutine(FadeAndDestroy(0.18f, 1.4f));
@@ -82,7 +82,7 @@ namespace Rebuild.Mining
 
         IEnumerator Lifecycle()
         {
-            // Pop in.
+
             float t = 0f;
             var start = _rt.localScale;
             var target = Vector3.one;
@@ -93,7 +93,7 @@ namespace Rebuild.Mining
                 _rt.localScale = Vector3.Lerp(start, target * 1.1f, k);
                 yield return null;
             }
-            // Settle.
+
             t = 0f;
             while (t < 0.10f)
             {
@@ -104,7 +104,7 @@ namespace Rebuild.Mining
             }
             _rt.localScale = target;
 
-            // Wait for lifetime, then time out + fade.
+
             float wait = Mathf.Max(0.1f, lifetime - spawnPunchTime - 0.10f);
             float waited = 0f;
             while (waited < wait && !_consumed)

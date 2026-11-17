@@ -2,17 +2,17 @@ using UnityEngine;
 
 namespace Rebuild.Mining
 {
-    /// <summary>generates a **dotted** white ring sprite at runtime (matches the
-    /// original game's mining-area indicator: ~20 small dots evenly spaced around the
-    /// circumference, transparent inside). Used by <see cref="MiningCursorUI"/> for the mining-area
-    /// indicator. Cached statically with <see cref="HideFlags.HideAndDontSave"/> — runtime-only.</summary>
+
+
+
+
     public static class RingSpriteFactory
     {
         const int Size = 256;
-        const float OuterMargin = 6f;     // distance from texture edge to ring centerline
-        const int DotCount = 20;          // dots evenly spaced around the circle
-        const float DotRadius = 7f;       // each dot's radius in px (at 256-square base)
-        const float DotSoftEdge = 1.6f;   // anti-alias band on the dot edge
+        const float OuterMargin = 6f;
+        const int DotCount = 20;
+        const float DotRadius = 7f;
+        const float DotSoftEdge = 1.6f;
 
         static Sprite s_ringSprite;
         static Texture2D s_ringTex;
@@ -29,15 +29,15 @@ namespace Rebuild.Mining
                 name = "MiningAreaRing_runtime",
             };
 
-            // Start fully transparent — we'll only paint the dots.
+
             var pixels = new Color32[Size * Size];
-            // (Color32 default is (0,0,0,0) which is what we want for an empty texture.)
+
 
             var center = new Vector2(Size * 0.5f - 0.5f, Size * 0.5f - 0.5f);
-            float circleR = Size * 0.5f - OuterMargin - DotRadius; // dot CENTER orbit radius
+            float circleR = Size * 0.5f - OuterMargin - DotRadius;
 
-            // Plot DotCount dots evenly around the circumference. Only iterate within each dot's
-            // bounding box for efficiency (DotCount × ~225 pixels instead of full Size² scan).
+
+
             for (int i = 0; i < DotCount; i++)
             {
                 float angle = (i / (float)DotCount) * Mathf.PI * 2f;
@@ -57,8 +57,8 @@ namespace Rebuild.Mining
                         float d = Vector2.Distance(new Vector2(x, y), dotCenter);
                         if (d > DotRadius + DotSoftEdge) continue;
 
-                        // Soft edge: full alpha when inside (d < DotRadius - SoftEdge),
-                        // fading linearly to 0 at d = DotRadius + SoftEdge.
+
+
                         float alpha;
                         if (d <= DotRadius - DotSoftEdge) alpha = 1f;
                         else
@@ -67,8 +67,8 @@ namespace Rebuild.Mining
                             alpha = t;
                         }
 
-                        // Take max so overlapping dots don't darken each other (dots are spaced
-                        // far enough apart at DotCount=20 to not overlap, but max keeps it safe).
+
+
                         int idx = y * Size + x;
                         byte a = (byte)Mathf.RoundToInt(alpha * 255f);
                         if (a > pixels[idx].a)
@@ -91,8 +91,8 @@ namespace Rebuild.Mining
             return s_ringSprite;
         }
 
-        /// <summary>Drop the cached sprite so the next <see cref="GetRing"/> regenerates the
-        /// texture. Useful when tuning DotCount/DotRadius constants in the editor.</summary>
+
+
         public static void Invalidate()
         {
             if (s_ringSprite != null) Object.DestroyImmediate(s_ringSprite);

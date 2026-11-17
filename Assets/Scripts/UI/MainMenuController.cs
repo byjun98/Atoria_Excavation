@@ -1,13 +1,14 @@
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace Rebuild.UI
 {
-    /// <summary>
-    /// main-menu shell. Owns 5-tab toggle, KeepOnMining/Settings/Stats/Credits/Back buttons,
-    /// and orchestrates StartScreen <-> MainMenu transition via CircleTransitionController.
-    /// </summary>
+
+
+
+
     [RequireComponent(typeof(Canvas))]
     public sealed class MainMenuController : MonoBehaviour
     {
@@ -44,8 +45,8 @@ namespace Rebuild.UI
         [SerializeField] Button infoBtn;
 
         [Header("Tab visuals")]
-        [SerializeField] Color selectedColor = new Color(1f, 0.84f, 0f, 1f); // #FFD600
-        [SerializeField] Color idleColor = new Color(0.65f, 0.65f, 0.65f, 1f);
+        [SerializeField] Color selectedColor = new Color(0.22f, 0.33f, 0.27f, 1f);
+        [SerializeField] Color idleColor = MuseumUiTheme.Surface;
 
         Button[] _tabButtons;
         GameObject[] _tabPanels;
@@ -145,7 +146,7 @@ namespace Rebuild.UI
             if (infoBtn         != null) infoBtn.onClick.AddListener(OnInfo);
         }
 
-        /// <summary>Called by StartScreenController when Play is pressed.</summary>
+
         public void PlayGame()
         {
             if (circleTransition == null)
@@ -185,15 +186,15 @@ namespace Rebuild.UI
             _currentTab = tab;
             ApplyTabVisuals(tab);
             ConfigureInputLayering();
-            // context-triggered tutorial frames. Each tab checks an unlock
-            // condition before requesting its frame; MaybeShow silently skips when already seen.
+
+
             MaybeShowTabTutorial(tab);
         }
 
         void ConfigureInputLayering()
         {
-            // Full-screen tab panels are visual backdrops; their child buttons/nodes still receive
-            // input, but the backdrop Image itself must not eat clicks meant for the top controls.
+
+
             DisablePanelBackgroundRaycast(skillTreePanel);
             DisablePanelBackgroundRaycast(talentsPanel);
             DisablePanelBackgroundRaycast(anvilPanel);
@@ -236,7 +237,7 @@ namespace Rebuild.UI
                         tm.MaybeShow(3);
                     break;
                 case Tab.Mine:
-                    // 가 SpawnCopper 같은 SkillTree gate 를 도입한다 — 그 전에는 항상 표시.
+
                     tm.MaybeShow(4);
                     break;
                 case Tab.Artifacts:
@@ -261,7 +262,7 @@ namespace Rebuild.UI
                     var panel = _tabPanels[i];
                     if (panel == null) continue;
                     panel.SetActive(i == idx);
-                    // fade-in 새 탭 (0.2s). CanvasGroup 미존재 시 자동 add.
+
                     if (i == idx)
                     {
                         var cg = panel.GetComponent<CanvasGroup>();
@@ -280,6 +281,10 @@ namespace Rebuild.UI
                     var img = btn.GetComponent<Image>();
                     if (img != null)
                         img.color = UsesLabeledMenuButtonSprite(img) ? Color.white : ((i == idx) ? selectedColor : idleColor);
+                    var marker = btn.transform.Find("SelectionMarker");
+                    if (marker != null) marker.gameObject.SetActive(i == idx);
+                    foreach (var label in btn.GetComponentsInChildren<TMP_Text>(true))
+                        label.color = i == idx ? MuseumUiTheme.Text : MuseumUiTheme.Muted;
                 }
             }
         }
@@ -307,19 +312,19 @@ namespace Rebuild.UI
 
         void OnKeepOnMining()
         {
-            // hand off to MiningSessionController, which owns the StartScreen <-> Mining swap.
+
             var session = Rebuild.Mining.MiningSessionController.Instance;
             if (session != null) { session.StartSession(); return; }
             Debug.LogWarning("[Rebuild][] KeepOnMining clicked but MiningSessionController.Instance is null. Run Tools > Rebuild > Setup Scene.");
         }
 
-        /// <summary>Called by MiningSessionController.StartSession midpoint.</summary>
+
         public void HideMainMenu()
         {
             if (mainMenuPanel != null) mainMenuPanel.SetActive(false);
         }
 
-        /// <summary>Called by MiningSessionController.EndSession midpoint.</summary>
+
         public void ShowMainMenu()
         {
             if (mainMenuPanel != null) mainMenuPanel.SetActive(true);
@@ -329,14 +334,14 @@ namespace Rebuild.UI
 
         void OnSettings()
         {
-            // open the modal settings overlay (Canvas_SettingsPanel).
+
             if (SettingsPanelUI.Instance != null) SettingsPanelUI.Instance.Show();
             else Debug.Log("[Rebuild][] settingsBtn clicked but SettingsPanelUI.Instance is null. Run Tools > Rebuild > Setup Scene.");
         }
         void OnStats()
         {
-            // open the modal stats overlay (Canvas_StatsPanel). If the panel was
-            // never set up the button stays a no-op so the menu still works.
+
+
             if (StatsPanelUI.Instance != null) StatsPanelUI.Instance.Show();
             else Debug.Log("[Rebuild][] statsBtn clicked but StatsPanelUI.Instance is null. Run Tools > Rebuild > Setup Scene.");
         }

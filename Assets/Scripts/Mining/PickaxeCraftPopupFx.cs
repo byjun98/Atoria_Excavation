@@ -4,13 +4,13 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>celebration popup that fires when a pickaxe craft completes.
-    /// Mirrors original <c>TheAnvil.SetFinishedCraftingPopUp</c>: the new pickaxe sprite punches
-    /// in big, settles, holds for ~1.6s, then fades out. Uses <see cref="Time.unscaledDeltaTime"/>
-    /// so a paused game still shows the fanfare.
-    /// <para>Pattern matches <see cref="PickaxeSwingFx"/> / <see cref="MineOrePopupFx"/>: static
-    /// Spawn → one-shot coroutine → self-destroys at the end.</para>
-    /// </summary>
+
+
+
+
+
+
+
     public sealed class PickaxeCraftPopupFx : MonoBehaviour
     {
         const float PunchInDuration = 0.25f;
@@ -26,9 +26,9 @@ namespace Rebuild.Mining
         Coroutine _running;
         bool _initialized;
 
-        /// <summary>Spawn the popup centered on <paramref name="parent"/> (typically the Anvil
-        /// carousel root or a dedicated CraftPopupAnchor under the MainMenu canvas).
-        /// <paramref name="size"/> is the resting square dimension in canvas px.</summary>
+
+
+
         public static PickaxeCraftPopupFx Spawn(RectTransform parent, Sprite pickaxeSprite,
                                                   Color tint, float size = DefaultSize)
         {
@@ -42,7 +42,7 @@ namespace Rebuild.Mining
             rt.anchoredPosition = Vector2.zero;
             rt.sizeDelta = new Vector2(size, size);
             rt.localScale = Vector3.zero;
-            rt.SetAsLastSibling(); // render on top of the carousel
+            rt.SetAsLastSibling();
 
             var img = go.GetComponent<Image>();
             img.sprite = pickaxeSprite;
@@ -73,7 +73,7 @@ namespace Rebuild.Mining
 
         void OnDisable()
         {
-            // Panel hides mid-flight (tab switch) — drop the popup so it doesn't reappear later.
+
             if (!_initialized) return;
             if (_running != null) StopCoroutine(_running);
             _running = null;
@@ -82,7 +82,7 @@ namespace Rebuild.Mining
 
         IEnumerator Lifecycle()
         {
-            // Punch in (0 → PeakScale, ease-out via Sin curve).
+
             float t = 0f;
             while (t < PunchInDuration)
             {
@@ -94,7 +94,7 @@ namespace Rebuild.Mining
             }
             _rt.localScale = Vector3.one * PeakScale;
 
-            // Settle back to 1.0 (SmoothStep ease-in-out).
+
             t = 0f;
             while (t < SettleDuration)
             {
@@ -106,7 +106,7 @@ namespace Rebuild.Mining
             }
             _rt.localScale = Vector3.one * SettledScale;
 
-            // Hold so the player registers what they just made.
+
             float hold = 0f;
             while (hold < HoldDuration)
             {
@@ -114,7 +114,7 @@ namespace Rebuild.Mining
                 yield return null;
             }
 
-            // Fade alpha 1 → 0.
+
             t = 0f;
             Color baseColor = _img != null ? _img.color : Color.white;
             while (t < FadeOutDuration)

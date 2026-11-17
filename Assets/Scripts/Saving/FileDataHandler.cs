@@ -4,9 +4,9 @@ using UnityEngine;
 
 namespace Rebuild.Saving
 {
-    /// <summary>JSON file read/write under <see cref="Application.persistentDataPath"/>.
-    /// `.bak` backup every 5 saves + AttemptRollback on Load failure (mirrors
-    /// original FileDataHandler's saveIncrement toggle).</summary>
+
+
+
     public sealed class FileDataHandler
     {
         const int BackupEverySaves = 5;
@@ -26,39 +26,16 @@ namespace Rebuild.Saving
         public GameDataDTO Load()
         {
             var full = FullPath;
-            if (!File.Exists(full))
-            {
-                // primary missing but bak survives → restore.
-                if (File.Exists(BackupPath))
-                {
-                    try
-                    {
-                        File.Copy(BackupPath, full, overwrite: true);
-                        Debug.Log("[Rebuild.Saving] Primary save missing — restored from .bak.");
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogError($"[Rebuild.Saving] .bak restore failed: {e}");
-                        return null;
-                    }
-                }
-                else
-                {
-                    return null;
-                }
-            }
+            if (!File.Exists(full)) return AttemptRollback();
             try
             {
                 string json = File.ReadAllText(full);
-                var dto = JsonUtility.FromJson<GameDataDTO>(json);
-                // JsonUtility can return null when the JSON is unparseable, or arrays sized 0
-                // from a corrupt save — caller (DataPersistenceManager) treats null as NewGame.
-                return dto;
+                return JsonUtility.FromJson<GameDataDTO>(json) ?? AttemptRollback();
             }
             catch (Exception e)
             {
                 Debug.LogError($"[Rebuild.Saving] Failed to load '{full}': {e}");
-                // primary parse failed. Try .bak rollback once.
+
                 return AttemptRollback();
             }
         }
@@ -68,10 +45,11 @@ namespace Rebuild.Saving
             if (!File.Exists(BackupPath)) return null;
             try
             {
-                File.Copy(BackupPath, FullPath, overwrite: true);
-                string json = File.ReadAllText(FullPath);
+                string json = File.ReadAllText(BackupPath);
                 var dto = JsonUtility.FromJson<GameDataDTO>(json);
-                Debug.LogWarning("[Rebuild.Saving] Corrupt primary — rolled back to .bak.");
+                if (dto == null) return null;
+                try { WriteSnapshot(FullPath, json); }
+                catch (Exception e) { Debug.LogWarning($"[Rebuild.Saving] Loaded backup, but could not replace primary: {e}"); }
                 return dto;
             }
             catch (Exception e)
@@ -88,14 +66,14 @@ namespace Rebuild.Saving
             {
                 if (!Directory.Exists(_dirPath)) Directory.CreateDirectory(_dirPath);
                 data.lastSavedUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                // prettyPrint=true so a human can diff saves while debugging .
+
                 string json = JsonUtility.ToJson(data, prettyPrint: true);
-                File.WriteAllText(full, json);
+                WriteSnapshot(full, json);
                 _saveCount++;
-                // backup every Nth save so a corrupt primary stays recoverable.
+
                 if (_saveCount % BackupEverySaves == 0)
                 {
-                    try { File.Copy(full, BackupPath, overwrite: true); }
+                    try { WriteSnapshot(BackupPath, json); }
                     catch (Exception e) { Debug.LogWarning($"[Rebuild.Saving] .bak write failed: {e}"); }
                 }
                 return true;
@@ -104,6 +82,32 @@ namespace Rebuild.Saving
             {
                 Debug.LogError($"[Rebuild.Saving] Failed to save '{full}': {e}");
                 return false;
+            }
+        }
+
+        static void WriteSnapshot(string path, string json)
+        {
+            string tempPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                using (var stream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                using (var writer = new StreamWriter(stream))
+                {
+                    writer.Write(json);
+                    writer.Flush();
+                    stream.Flush(flushToDisk: true);
+                }
+
+                if (File.Exists(path)) File.Replace(tempPath, path, null);
+                else File.Move(tempPath, path);
+            }
+            finally
+            {
+                if (File.Exists(tempPath))
+                {
+                    try { File.Delete(tempPath); }
+                    catch (IOException e) { Debug.LogWarning($"[Rebuild.Saving] Temporary save cleanup failed: {e}"); }
+                }
             }
         }
 

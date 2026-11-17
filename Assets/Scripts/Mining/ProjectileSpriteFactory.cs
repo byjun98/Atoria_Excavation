@@ -2,13 +2,13 @@ using UnityEngine;
 
 namespace Rebuild.Mining
 {
-    /// <summary>placeholder projectile visuals + real sprite swap.
-    /// <para>
-    /// generates 4 runtime sprites: horizontal bar (Beam), radial circle (Plazma),
-    /// square+cross (Dynamite), 8-arm starburst (Electricity). Each tinted via Image.color.
-    /// </para>
-    /// Optional project sprites can override the generated shapes. If none are shipped, the
-    /// runtime generator stays in service so the game still renders without a missing-sprite gap.</summary>
+
+
+
+
+
+
+
     public static class ProjectileSpriteFactory
     {
         static Sprite s_radial;
@@ -16,9 +16,9 @@ namespace Rebuild.Mining
         static Sprite s_square;
         static Sprite s_burst;
 
-        // Optional shipped projectile sprites can be cached here; the public build uses generated shapes.
+
         static Sprite s_realBeam, s_realPlazma, s_realDynamite, s_realSplash;
-        // multi-layer support — shared decorations rendered above/below the main sprite.
+
         static Sprite s_realGlow, s_realRing;
         static bool s_realLoadAttempted;
 
@@ -39,20 +39,20 @@ namespace Rebuild.Mining
         {
             if (s_realLoadAttempted) return;
             s_realLoadAttempted = true;
-            // Intentionally empty: fallback generators below keep projectile visuals available without
-            // shipping imported effect sprites.
+
+
         }
 
-        /// <summary>common back-layer glow sprite (radial soft halo). Returns
-        /// null if the import was never run; ProjectileFx skips the glow layer in that case.</summary>
+
+
         public static Sprite GetGlow()
         {
             EnsureRealLoaded();
             return s_realGlow;
         }
 
-        /// <summary>common front-layer hollow ring sprite (Dynamite shockwave).
-        /// Returns null if the import was never run; ProjectileFx skips the ring layer in that case.</summary>
+
+
         public static Sprite GetRing()
         {
             EnsureRealLoaded();
@@ -122,7 +122,7 @@ namespace Rebuild.Mining
                 float dSquare = Mathf.Max(dxAbs, dyAbs);
                 float dCircle = Mathf.Sqrt(dxAbs * dxAbs + dyAbs * dyAbs);
                 float baseK = Mathf.Clamp01(1f - dSquare / (N * 0.46f)) * 0.7f;
-                // X-cross: distance to diag y = x and y = -x.
+
                 float armA = Mathf.Clamp01(1f - Mathf.Abs(dxAbs - dyAbs) / 10f);
                 float armMask = Mathf.Clamp01(1f - dCircle / maxR);
                 float arms = armA * armMask;
@@ -150,7 +150,7 @@ namespace Rebuild.Mining
                 float d = Mathf.Sqrt(dx * dx + dy * dy);
                 if (d > maxR) { pixels[y * N + x] = new Color(0f, 0f, 0f, 0f); continue; }
                 float angle = Mathf.Atan2(dy, dx);
-                // 8 starburst spokes (sin(angle*4) has 8 peaks over a full rotation).
+
                 float spoke = Mathf.Abs(Mathf.Sin(angle * 4f));
                 float k = (1f - d / maxR) * spoke;
                 k = Mathf.Clamp01(k * 1.6f);

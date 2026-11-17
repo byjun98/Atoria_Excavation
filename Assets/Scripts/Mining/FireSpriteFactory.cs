@@ -2,9 +2,9 @@ using UnityEngine;
 
 namespace Rebuild.Mining
 {
-    /// <summary>placeholder visuals for the campfire + flowers.
-    /// Two runtime sprites: a flame-shaped vertical droplet (Fireplace) and a 5-petal
-    /// rosette (Flower). Both tinted via Image.color in their managers.</summary>
+
+
+
     public static class FireSpriteFactory
     {
         static Sprite s_flame;
@@ -20,8 +20,8 @@ namespace Rebuild.Mining
             var pixels = new Color32[W * H];
             for (int y = 0; y < H; y++)
             {
-                // Flame width tapers near top, widest near 35% from bottom.
-                float yN = y / (float)(H - 1);                 // 0 bottom .. 1 top
+
+                float yN = y / (float)(H - 1);
                 float pivot = 0.35f;
                 float widthFactor;
                 if (yN < pivot) widthFactor = Mathf.Lerp(0.75f, 1.0f, yN / pivot);
@@ -32,8 +32,8 @@ namespace Rebuild.Mining
                     float dx = Mathf.Abs(x - cx);
                     if (dx > halfW || halfW < 0.5f) { pixels[y * W + x] = new Color32(0, 0, 0, 0); continue; }
                     float k = Mathf.Clamp01(1f - dx / halfW);
-                    k = k * k;                                  // soft inner glow
-                    // Slight bottom fade so it doesn't sit on a hard line.
+                    k = k * k;
+
                     float bottom = Mathf.Clamp01(yN * 6f);
                     pixels[y * W + x] = new Color(1f, 1f, 1f, k * bottom);
                 }
@@ -72,11 +72,11 @@ namespace Rebuild.Mining
             const int N = 128;
             var tex = NewTex(N, N);
             float cx = (N - 1) * 0.5f, cy = (N - 1) * 0.5f;
-            float petalR = N * 0.34f;                            // distance from center to petal centre
-            float petalRadius = N * 0.18f;                       // each petal's circle radius
-            float coreRadius = N * 0.14f;                        // bright core
+            float petalR = N * 0.34f;
+            float petalRadius = N * 0.18f;
+            float coreRadius = N * 0.14f;
             var pixels = new Color32[N * N];
-            // 5 petals around the centre, offset 90° so one petal points up.
+
             const int petalCount = 5;
             var petalCenters = new Vector2[petalCount];
             for (int i = 0; i < petalCount; i++)

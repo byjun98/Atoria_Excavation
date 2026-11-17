@@ -5,11 +5,11 @@ using UnityEngine.UI;
 
 namespace Rebuild.UI
 {
-    /// <summary>
-    /// Scale-circle screen transition. Lives on Canvas_CircleTransition_andSettings.
-    /// 0.4s expand (scale 0 -> 26 cover screen) -> onMidpoint swap -> 0.4s shrink reveal.
-    /// Circle sprite is generated at runtime so we don't need an external asset.
-    /// </summary>
+
+
+
+
+
     [RequireComponent(typeof(Canvas))]
     public sealed class CircleTransitionController : MonoBehaviour
     {
@@ -23,7 +23,7 @@ namespace Rebuild.UI
         [Header("Tuning")]
         [SerializeField] float halfDuration = 0.4f;
         [SerializeField] float maxScale = 26f;
-        [SerializeField] Color circleColor = new Color(0.090f, 0.463f, 0.161f, 1f); // forest green #178126
+        [SerializeField] Color circleColor = new Color(0.090f, 0.463f, 0.161f, 1f);
 
         public bool IsTransitioning { get; private set; }
 
@@ -86,9 +86,9 @@ namespace Rebuild.UI
                 transitionBlock.SetActive(false);
         }
 
-        /// <summary>
-        /// Run the full expand -> swap -> shrink sequence.
-        /// </summary>
+
+
+
         public void PlayTransition(Action onMidpoint)
         {
             if (IsTransitioning) return;
@@ -143,7 +143,7 @@ namespace Rebuild.UI
             var pixels = new Color32[size * size];
             float r = size * 0.5f;
             float r2 = r * r;
-            float edge = 1.5f; // anti-alias band in pixels
+            float edge = 1.5f;
             for (int y = 0; y < size; y++)
             {
                 float dy = y - r + 0.5f;

@@ -5,21 +5,22 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>
-    /// HUD widget: 8 ore counters (Gold + 7 ores) shown top-left of Canvas_UI_MiningScene.
-    /// Subscribes to GoldAndOreMechanics.OnSessionGainedChanged and animates a small punch on increment.
-    /// Real MaterialFrame_topLeft (popup tween, ArtifactDisplayPosition, frame sprites) lands in /polish.
-    /// </summary>
+
+
+
+
+
     public sealed class OreCounterUI : MonoBehaviour
     {
-        /// <summary>OreDropPopupFx queries this for the fly-to RectTransform.</summary>
+
         public static OreCounterUI Instance { get; private set; }
 
         [SerializeField] RectTransform[] entries = new RectTransform[8];
         [SerializeField] TextMeshProUGUI[] countLabels = new TextMeshProUGUI[8];
-        [SerializeField] float punchScale = 1.45f;
+        [SerializeField] float punchScale = 1.08f;
         [SerializeField] float punchDuration = 0.28f;
 
+        RectTransform[] _iconRects;
         Vector3[] _baseScales;
         Coroutine[] _punchRoutines;
         bool _subscribed;
@@ -27,10 +28,22 @@ namespace Rebuild.Mining
         void Awake()
         {
             Instance = this;
+            _iconRects = new RectTransform[entries.Length];
             _baseScales = new Vector3[entries.Length];
             _punchRoutines = new Coroutine[entries.Length];
             for (int i = 0; i < entries.Length; i++)
-                _baseScales[i] = entries[i] != null ? entries[i].localScale : Vector3.one;
+            {
+                if (entries[i] != null)
+                {
+                    foreach (var image in entries[i].GetComponentsInChildren<Image>(true))
+                    {
+                        if (image.transform == entries[i]) continue;
+                        _iconRects[i] = image.rectTransform;
+                        break;
+                    }
+                }
+                _baseScales[i] = _iconRects[i] != null ? _iconRects[i].localScale : Vector3.one;
+            }
         }
 
         void OnDestroy()
@@ -38,8 +51,8 @@ namespace Rebuild.Mining
             if (Instance == this) Instance = null;
         }
 
-        /// <summary>fly-to target for ore drop popups. Returns the RectTransform of
-        /// the counter slot for <paramref name="ore"/>, or null when the slot wasn't wired.</summary>
+
+
         public RectTransform GetEntryRT(OreType ore)
         {
             int idx = (int)ore;
@@ -53,22 +66,22 @@ namespace Rebuild.Mining
             {
                 GoldAndOreMechanics.Instance.OnSessionGainedChanged += HandleSessionGainedChanged;
                 _subscribed = true;
-                // Sync current session values on activation.
+
                 for (int i = 0; i < 8; i++)
                     SetLabel((OreType)i, GoldAndOreMechanics.Instance.GetSessionGained((OreType)i));
             }
-            // Spawn SkillTree 노드 구매 시 HUD row 즉시 활성.
+
             if (SkillTreeManager.Instance != null)
                 SkillTreeManager.Instance.OnUpgradeChanged += HandleUpgradeChanged;
-            // progressive unlock. Row 가 visible 한 조건:
-            //   (1) 누적 카운트 > 0 (한 번이라도 채굴함), 또는
-            //   (2) 해당 ore 의 Spawn SkillTree 노드 구매됨 (Cobalt~Painite),
-            //   (3) Gold/Copper/Iron 은 base 광물 — 항상 visible (시작 직후엔 Gold 만).
+
+
+
+
             RefreshRowVisibility();
         }
 
-        /// <summary>recalculate visible/hidden state for each row. Called from OnEnable
-        /// and after the player's first drop of a new ore type (via HandleSessionGainedChanged).</summary>
+
+
         public void RefreshRowVisibility()
         {
             var ore = GoldAndOreMechanics.Instance;
@@ -83,11 +96,11 @@ namespace Rebuild.Mining
 
         static bool ShouldShowRow(OreType ore, GoldAndOreMechanics ores, SkillTreeManager sk)
         {
-            // Gold 는 첫 광물 — 항상 표시 (mining session 진입 직후 빈 상태 X).
+
             if (ore == OreType.Gold) return true;
-            // 이미 1개 이상 보유하면 표시 (한 번 발굴 후엔 계속 보임).
+
             if (ores != null && ores.GetSessionGained(ore) > 0) return true;
-            // 해당 ore 의 Spawn SkillTree 노드 구매됐으면 표시.
+
             if (sk != null)
             {
                 UpgradeId spawnId = ore switch
@@ -115,11 +128,17 @@ namespace Rebuild.Mining
             }
             if (SkillTreeManager.Instance != null)
                 SkillTreeManager.Instance.OnUpgradeChanged -= HandleUpgradeChanged;
+            for (int i = 0; i < _punchRoutines.Length; i++)
+            {
+                if (_punchRoutines[i] != null) StopCoroutine(_punchRoutines[i]);
+                _punchRoutines[i] = null;
+                if (_iconRects[i] != null) _iconRects[i].localScale = _baseScales[i];
+            }
         }
 
         void HandleUpgradeChanged(UpgradeId id, int _)
         {
-            // Spawn 노드 구매 시점 row 즉시 활성. 다른 노드는 무관 cheap no-op.
+
             switch (id)
             {
                 case UpgradeId.CopperSpawn:
@@ -138,7 +157,7 @@ namespace Rebuild.Mining
         {
             SetLabel(ore, newCount);
             if (newCount > 0) PlayPunch((int)ore);
-            // 첫 ore 획득 시 row 활성. 이미 visible 이면 cheap no-op.
+
             int idx = (int)ore;
             if (newCount > 0 && idx >= 0 && idx < entries.Length
                 && entries[idx] != null && !entries[idx].gameObject.activeSelf)
@@ -157,32 +176,32 @@ namespace Rebuild.Mining
             if (idx < 0 || idx >= countLabels.Length) return;
             var tmp = countLabels[idx];
             if (tmp == null) return;
-            // K/M/B/T 축약 (100k 이상). 100k 이하는 그대로 (1,234 형식).
+
             tmp.text = Rebuild.Util.FormatNumbers.Format(count);
         }
 
         void PlayPunch(int idx)
         {
             if (idx < 0 || idx >= entries.Length) return;
-            if (entries[idx] == null) return;
+            if (_iconRects[idx] == null) return;
             if (_punchRoutines[idx] != null) StopCoroutine(_punchRoutines[idx]);
             _punchRoutines[idx] = StartCoroutine(PunchRoutine(idx));
         }
 
         IEnumerator PunchRoutine(int idx)
         {
-            var rt = entries[idx];
+            var rt = _iconRects[idx];
             var basis = _baseScales[idx];
             var punched = basis * punchScale;
             float t = 0f;
-            // up (fast)
+
             while (t < punchDuration * 0.35f)
             {
                 t += Time.unscaledDeltaTime;
                 rt.localScale = Vector3.Lerp(basis, punched, Mathf.Clamp01(t / (punchDuration * 0.35f)));
                 yield return null;
             }
-            // settle
+
             t = 0f;
             float settle = punchDuration * 0.65f;
             while (t < settle)

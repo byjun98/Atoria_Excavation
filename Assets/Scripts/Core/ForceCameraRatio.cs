@@ -34,7 +34,7 @@ namespace Rebuild.Core
 
             if (scaleHeight < 1f)
             {
-                // window narrower than target — letterbox top/bottom
+
                 Rect r = cam.rect;
                 r.width = 1f;
                 r.height = scaleHeight;
@@ -44,7 +44,7 @@ namespace Rebuild.Core
             }
             else
             {
-                // window wider than target — pillarbox left/right
+
                 float scaleWidth = 1f / scaleHeight;
                 Rect r = cam.rect;
                 r.width = scaleWidth;

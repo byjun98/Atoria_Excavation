@@ -1,5 +1,5 @@
-// Reference Rebuild.Audio.AudioManager fully qualified throughout the file to avoid
-// collisions with legacy global type names.
+
+
 using Rebuild.Saving;
 using TMPro;
 using UnityEngine;
@@ -7,12 +7,12 @@ using UnityEngine.UI;
 
 namespace Rebuild.UI
 {
-    /// <summary>modal settings overlay launched from MainMenu's settingsBtn.
-    /// Lives on Canvas_SettingsPanel (sortingOrder 307 — above MainMenu/Stats/AchievementUnlocked,
-    /// below Tutorial/CircleTransition/SaveToast). Three sliders drive
-    /// <see cref="AudioManager"/> directly (Master applies to AudioListener, Music writes to the
-    /// wired-in BGM AudioSource, SFX is multiplied into every PlayOneShot). A confirm-style
-    /// Reset Game button wipes the save file and re-initialises every manager.</summary>
+
+
+
+
+
+
     public sealed class SettingsPanelUI : MonoBehaviour
     {
         public static SettingsPanelUI Instance { get; private set; }
@@ -75,7 +75,7 @@ namespace Rebuild.UI
             Rebuild.Audio.AudioManager.Instance?.Play("Click_1");
             if (panelRoot != null) panelRoot.SetActive(true);
             SyncSlidersFromManager();
-            // Re-arm the reset button each time the panel opens so leaving + returning resets state.
+
             _resetArmed = false;
             UpdateResetLabel();
         }
@@ -92,8 +92,8 @@ namespace Rebuild.UI
         {
             var am = Rebuild.Audio.AudioManager.Instance;
             if (am == null) return;
-            // Suppress the slider OnValueChanged callbacks during programmatic syncs so we don't
-            // ping-pong through SetXVolume().
+
+
             _binding = true;
             if (masterSlider != null) masterSlider.value = am.MasterVolume;
             if (musicSlider != null) musicSlider.value = am.MusicVolume;
@@ -144,7 +144,7 @@ namespace Rebuild.UI
         {
             if (!_resetArmed)
             {
-                // First click arms the button — second click within this panel session confirms.
+
                 _resetArmed = true;
                 UpdateResetLabel();
                 Rebuild.Audio.AudioManager.Instance?.Play("UI_Click1");
@@ -156,14 +156,14 @@ namespace Rebuild.UI
         void UpdateResetLabel()
         {
             if (resetGameLabel == null) return;
-            resetGameLabel.text = _resetArmed ? "정말 초기화?" : "기록 초기화";
+            resetGameLabel.text = _resetArmed ? "기록을 초기화할까요?" : "기록 초기화";
         }
 
         void PerformReset()
         {
-            // Wipe the save file then ask every IDataPersistence to LoadData(new DTO) — same path
-            // as a brand-new player on day 1. Volumes get reset too (LoadData on AudioManager
-            // pushes the DTO defaults back into the sliders via OnVolumesChanged).
+
+
+
             var dpm = Rebuild.Saving.DataPersistenceManager.Instance;
             if (dpm != null)
             {
@@ -171,7 +171,7 @@ namespace Rebuild.UI
                 dpm.NewGame();
                 dpm.SaveGame();
             }
-            // Clear cached eligibility for one-shot managers that don't fully wipe in LoadData.
+
             Rebuild.Mining.TheEndingManager.Instance?.ResetAll();
             _resetArmed = false;
             UpdateResetLabel();

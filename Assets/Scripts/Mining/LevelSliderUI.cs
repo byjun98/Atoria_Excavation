@@ -5,8 +5,8 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>XP fill slider + Level number HUD (bottom-left of Canvas_UI_MiningScene).
-    /// Subscribes to LevelMechanics events while enabled.</summary>
+
+
     public sealed class LevelSliderUI : MonoBehaviour
     {
         [SerializeField] Slider xpSlider;
@@ -32,11 +32,17 @@ namespace Rebuild.Mining
                 LevelMechanics.Instance.OnXpChanged -= HandleXpChanged;
                 LevelMechanics.Instance.OnLevelUp -= HandleLevelUp;
             }
+            if (_punchCo != null)
+            {
+                StopCoroutine(_punchCo);
+                _punchCo = null;
+                transform.localScale = Vector3.one;
+            }
         }
 
         void Start()
         {
-            // Mechanics may not have existed during OnEnable on the very first frame.
+
             if (LevelMechanics.Instance != null) SyncFromMechanics();
         }
 
@@ -56,7 +62,7 @@ namespace Rebuild.Mining
                 xpSlider.maxValue = Mathf.Max(1, xpToNext);
                 xpSlider.value = Mathf.Clamp(currentXp, 0, xpSlider.maxValue);
             }
-            if (xpNeededText != null) xpNeededText.text = $"{currentXp} / {xpToNext}";
+            if (xpNeededText != null) xpNeededText.text = $"{currentXp:N0} / {xpToNext:N0} XP";
         }
 
         void HandleLevelUp(int newLevel, int totalTalentPoints)
@@ -78,7 +84,7 @@ namespace Rebuild.Mining
         {
             var t = transform;
             var baseScale = Vector3.one;
-            var bigScale = baseScale * 1.18f;
+            var bigScale = baseScale * 1.045f;
             float dur = 0.18f;
             float k = 0f;
             while (k < dur)

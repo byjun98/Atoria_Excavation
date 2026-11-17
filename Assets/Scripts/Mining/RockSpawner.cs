@@ -1,16 +1,18 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using Unity.Profiling;
 
 namespace Rebuild.Mining
 {
-    /// <summary>
-    /// placeholder rock spawner. Picks random tile spots in each TileGrid row
-    /// and instantiates simple Image-based rocks with weighted-random ore type tints.
-    /// Real RockMechanics (HP, full/chunk/broken visuals, collider) lands in .
-    /// </summary>
+
+
+
+
+
     public sealed class RockSpawner : MonoBehaviour
     {
+        static readonly ProfilerMarker s_spawnMarker = new ProfilerMarker("Atoria.Rock.Spawn");
         public static RockSpawner Instance { get; private set; }
 
         [Header("Spawn count")]
@@ -20,10 +22,10 @@ namespace Rebuild.Mining
         [SerializeField] Vector2 rockSizeDelta = new Vector2(220f, 220f);
         [SerializeField] int rockHp = 10;
 
-        // (type, weight). Higher weight = more common. Total can be any number; weighted-pick handles it.
-        // progressive unlock. 시작 시 Gold 만 spawn (weight 50), 나머지는
-        // SkillTree 의 `*Spawn` 노드 구매 시점에 활성 (+25 weight via WeightBoostFor).
-        // 원본 게임 사진 2 첫 세션 = Gold 만 보이는 동작 매칭.
+
+
+
+
         static readonly (OreType type, int weight)[] OreWeights =
         {
             (OreType.Gold,    50),
@@ -39,16 +41,18 @@ namespace Rebuild.Mining
         static readonly int[] SpawnMoreRocksIncreases = { 4, 5, 7, 8, 9, 9, 12, 15, 16 };
 
         readonly List<GameObject> _activeRocks = new List<GameObject>();
+        readonly Dictionary<RectTransform, List<Rock>> _rocksByRow = new Dictionary<RectTransform, List<Rock>>();
+        readonly Dictionary<(Sprite sprite, bool preserveAspect), (Vector2 pivot, float scale)> _rockFits = new();
 
-        // 세션당 GoldenChest 1개 제한 (원본 SetRockScreen.spawnedGoldenChest 패턴).
-        // MiningSessionController.ApplyEnterSession 이 매 세션 시작 시 false 로 리셋.
+
+
         public bool GoldenChestSpawnedThisSession { get; private set; }
         public void ResetGoldenChestFlag() { GoldenChestSpawnedThisSession = false; }
-        // Bonus spawns reuse the latest row offsets. Unlike the initial session layout, they do
-        // not reserve tile slots: original SpawnRockCount just picked a random row position and
-        // allowed rocks to overlap.
+        readonly Rock[] _cells = new Rock[TileGrid.Rows * TileGrid.Cols];
+        RectTransform[] _rows;
         Vector2 _cachedTileStart;
         Vector2 _cachedTileStep;
+        Vector2 _cachedTileAcross;
         int _cachedTilesPerRow;
 
         public int ActiveCount => _activeRocks.Count;
@@ -56,55 +60,69 @@ namespace Rebuild.Mining
         void Awake() { Instance = this; }
         void OnDestroy() { if (Instance == this) Instance = null; }
 
-        public void SpawnAll(RectTransform[] rowContainers, Vector2 tileStartInRow, Vector2 tileStepInRow, int tilesPerRow)
+        internal IReadOnlyList<Rock> RocksInRow(RectTransform row)
+        {
+            if (row != null && _rocksByRow.TryGetValue(row, out var rocks)) return rocks;
+            return System.Array.Empty<Rock>();
+        }
+
+        internal void RemoveFromRow(Rock rock, RectTransform row)
+        {
+            if (row != null && _rocksByRow.TryGetValue(row, out var rocks)) rocks.Remove(rock);
+            ReleaseCell(rock);
+        }
+
+        bool ReleaseCell(Rock rock)
+        {
+            int cell = rock.GridCell;
+            if (cell < 0 || !ReferenceEquals(_cells[cell], rock)) return false;
+            _cells[cell] = null;
+            return true;
+        }
+
+        internal void CompleteBreak(Rock rock, bool respawnInRow)
+        {
+            if (!ReleaseCell(rock)) return;
+            var session = MiningSessionController.Instance;
+            if (session == null || !session.TimerRunning || session.ResultsShown) return;
+
+            if (rock.HasReservedRock)
+                SpawnAtCell(rock.GridCell, allowReserve: false);
+            if (respawnInRow)
+                SpawnOneInRow(_rows[rock.GridCell / _cachedTilesPerRow]);
+        }
+
+        public void SpawnAll(TileGrid grid)
         {
             ClearAll();
-            if (rowContainers == null) return;
-            // Cache layout for SpawnOneInRow (RespawnRockChance hook).
-            _cachedTileStart = tileStartInRow;
-            _cachedTileStep = tileStepInRow;
-            _cachedTilesPerRow = tilesPerRow;
+            _rows = grid.RowContainers;
+            if (_rows == null) return;
 
-            int totalRocks = ComputeTotalRocksToSpawn();
-            int rowCount = rowContainers.Length;
-            float perRow = rowCount > 0 ? (float)totalRocks / rowCount : 0f;
-            int basePerRow = Mathf.FloorToInt(perRow);
-            float fractional = perRow - basePerRow;
-            int remainder = rowCount > 0 ? totalRocks % rowCount : 0;
-            int extrasAdded = 0;
-            var sprite = RockSpriteFactory.GetRockSprite();
-            for (int i = 0; i < rowContainers.Length; i++)
+            _cachedTileStart = grid.TileStartInRow;
+            _cachedTileStep = grid.TileStepInRow;
+            _cachedTileAcross = grid.TileAcrossInRow;
+            _cachedTilesPerRow = grid.TilesPerRow;
+            _rockFits.Clear();
+
+            int rowCount = _rows.Length;
+            if (rowCount == 0) return;
+            int totalRocks = Mathf.Min(ComputeTotalRocksToSpawn(), rowCount * _cachedTilesPerRow);
+            int basePerRow = totalRocks / rowCount;
+            int remainder = totalRocks % rowCount;
+            for (int i = 0; i < rowCount; i++)
             {
-                var row = rowContainers[i];
-                if (row == null) continue;
-
-                int n = basePerRow;
-                if (extrasAdded < remainder && Random.Range(0f, 1f) <= fractional)
+                int count = basePerRow;
+                if (remainder > 0 && Random.Range(0, rowCount - i) < remainder)
                 {
-                    n += 1;
-                    extrasAdded++;
+                    count++;
+                    remainder--;
                 }
-                if (i == rowContainers.Length - 1 && extrasAdded < remainder)
-                    n += remainder - extrasAdded;
-                n = Mathf.Clamp(n, 0, tilesPerRow);
-                var picks = PickUniqueIndices(tilesPerRow, n);
-                foreach (var j in picks)
-                {
-                    var anchored = tileStartInRow + new Vector2(tileStepInRow.x * j, tileStepInRow.y * j);
-                    SpawnOne(row, anchored, sprite);
-                }
+                foreach (int column in PickUniqueIndices(_cachedTilesPerRow, count))
+                    SpawnAtCell(i * _cachedTilesPerRow + column);
             }
-            // Skull artifact: 세션당 +10 bonus rocks 분산. 원본
-            // RockMechanics.cs:910 `SkillTree.totalRocksToSpawn += 10` 매칭. base SpawnAll 종료 후
-            // 무작위 row 에 SpawnOneInRow 10번 호출. 원본처럼 겹쳐도 spawn.
+
             if (ArtifactsManager.Instance != null && ArtifactsManager.Instance.HasArtifact(ArtifactId.Skull))
-            {
-                for (int s = 0; s < 10; s++)
-                {
-                    var row = rowContainers[Random.Range(0, rowContainers.Length)];
-                    if (row != null) SpawnOneInRow(row);
-                }
-            }
+                for (int i = 0; i < 10; i++) SpawnOneInEmptyCell();
         }
 
         int ComputeTotalRocksToSpawn()
@@ -133,6 +151,9 @@ namespace Rebuild.Mining
                 if (Application.isPlaying) Destroy(go); else DestroyImmediate(go);
             }
             _activeRocks.Clear();
+            _rocksByRow.Clear();
+            System.Array.Clear(_cells, 0, _cells.Length);
+            _rows = null;
         }
 
         public void DisableInteraction()
@@ -157,24 +178,24 @@ namespace Rebuild.Mining
             }
         }
 
-        void SpawnOne(RectTransform row, Vector2 anchored, Sprite sprite)
+        Rock SpawnOne(RectTransform row, Vector2 anchored, Sprite sprite)
         {
+            using var spawnSample = s_spawnMarker.Auto();
             var go = new GameObject("Rock", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             go.transform.SetParent(row, false);
             var rt = (RectTransform)go.transform;
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = anchored;
             rt.sizeDelta = rockSizeDelta;
 
             var ore = RollOre();
             var tier = PickTier(ore);
-            // Chest variant 결정 (chests/goldenChests talent 활성 시 일정 확률).
+
             var chest = PickChestVariant();
             var img = go.GetComponent<Image>();
-            img.raycastTarget = true; // clickable
+            img.raycastTarget = true;
             img.preserveAspect = false;
-            // Chest variant 우선 sprite (있을 때). 없으면 ore tier visual fallback.
+
             Sprite chestSprite = null;
             if (chest == Rock.ChestKind.Chest) chestSprite = SpriteLibrary.GetChestRockSprite();
             else if (chest == Rock.ChestKind.Golden) chestSprite = SpriteLibrary.GetGoldenChestRockSprite();
@@ -186,37 +207,39 @@ namespace Rebuild.Mining
             }
             else
             {
-                // SpriteLibrary picks the best available visual.
-                // Tier 별 sprite (Sprites/Ore/{Chunk|Full}/{Ore}.png) 우선 시도, fallback Normal.
+
+
                 var visual = SpriteLibrary.GetRockVisual(ore, tier);
                 img.sprite = visual.Sprite != null ? visual.Sprite : sprite;
                 img.color = visual.ShouldTint ? visual.TintColor : Color.white;
             }
 
-            // artifact: Horn reduces rock maxHp by 3% (multiplier).
-            // Horn 의 0.03f 에 Rune universal multiplier 체인 적용. 원본
-            // RockMechanics.cs:276-296: `num2 *= 1f + runeImproveAll` (Rune 보유 시 -3.15%, 미보유 시 -3%).
-            // Archaeologist HP-1 flat 제거. 사용자 결정: 원본의 archeologistIncrease
-            // (0.08) multi-site multiplier 모델로 대체 (Cheese / Axe / WolfClaw / AncientDevice / PurpleRing /
-            // Dice / Horn 의 +8% strength). Horn HP-decrease 도 Archaeologist 보유 시 ×(1+0.08) 추가 cut
-            // — 원본 RockMechanics:279~287 매칭.
-            int hp = rockHp * RockTierDef.HpMultiplier(tier); // tier 별 HP 배수.
+
+
+
+
+
+
+
+            float hp = rockHp * RockTierDef.HpMultiplier(tier);
             if (ArtifactsManager.Instance != null && ArtifactsManager.Instance.HasArtifact(ArtifactId.Horn))
             {
                 float decrease = 0.03f * ArtifactsManager.Instance.RuneMultiplier;
-                // Archaeologist 가 horn-decrease 를 8% 강화 (원본 archeologistIncreaseDISPLAY).
+
                 if (LevelMechanics.Instance != null && LevelMechanics.Instance.HasTalent(TalentId.Archaeologist))
                     decrease *= 1.08f;
-                hp = Mathf.Max(1, Mathf.RoundToInt(hp * (1f - decrease)));
+                hp = Mathf.Max(1f, hp * (1f - decrease));
             }
             var rock = go.AddComponent<Rock>();
             rock.Initialize(ore, hp, tier, chest);
+            FitRockToCell(img);
+            rt.anchoredPosition = anchored;
             if (chest == Rock.ChestKind.Golden) GoldenChestSpawnedThisSession = true;
 
-            // pre-spawn artifact roll. 원본 SetRockScreen.SpawnRockCount 직후
-            // `artifactsScript.ArtifactDropChances()` 호출 매칭. ArtifactsManager 가 _oneArtifactPreRolledThisSession
-            // 으로 세션당 1개만 박힘 보장. 성공 시 rock 에 AssignArtifact → child overlay sprite 부착
-            // (50% HP 도달 시 노출). Chest variant 일 때는 AssignArtifact 가 자체 skip.
+
+
+
+
             if (ArtifactsManager.Instance != null)
             {
                 var preRolled = ArtifactsManager.Instance.TryRollOnRockSpawn();
@@ -224,29 +247,78 @@ namespace Rebuild.Mining
             }
 
             _activeRocks.Add(go);
-            // stat — every spawn (initial + RespawnRockChance respawn).
+            if (!_rocksByRow.TryGetValue(row, out var rocks))
+            {
+                rocks = new List<Rock>();
+                _rocksByRow.Add(row, rocks);
+            }
+            rocks.Add(rock);
+
             Rebuild.Stats.StatsManager.Instance?.RecordRockSpawned(1);
+            return rock;
         }
 
-        /// <summary>Chest variant 결정. 원본 RockMechanics.cs:512~527 모델 매칭.
-        /// 원본 수치 매칭:
-        /// - <c>chests_chosen</c> talent + 0.6% chance (원본 rockSpawnChance=0.6f, percentage 단위)
-        ///   → Chest variant → 부서지면 +25 ore (Rock.cs FadeAndDestroy)
-        /// - <c>goldenChests_chosen</c> talent + 0.5% + 세션당 1회 → Golden variant → +50 Gold
-        /// </summary>
+        void FitRockToCell(Image image)
+        {
+            if (image.sprite == null || _cachedTilesPerRow == 0) return;
+
+            var key = (image.sprite, image.preserveAspect);
+            if (!_rockFits.TryGetValue(key, out var fit))
+            {
+                var sprite = image.sprite;
+                var spriteSize = sprite.rect.size;
+                var drawSize = rockSizeDelta;
+                if (image.preserveAspect)
+                {
+                    float ratio = Mathf.Min(drawSize.x / spriteSize.x, drawSize.y / spriteSize.y);
+                    drawSize = spriteSize * ratio;
+                }
+
+                var along = _cachedTileStep;
+                var across = _cachedTileAcross;
+                float determinant = along.x * across.y - along.y * across.x;
+                var min = new Vector2(float.PositiveInfinity, float.PositiveInfinity);
+                var max = new Vector2(float.NegativeInfinity, float.NegativeInfinity);
+                foreach (var vertex in sprite.vertices)
+                {
+                    var p = Vector2.Scale((vertex * sprite.pixelsPerUnit + sprite.pivot) / spriteSize, drawSize);
+                    var cell = new Vector2(p.x * across.y - p.y * across.x, along.x * p.y - along.y * p.x) / determinant;
+                    min = Vector2.Min(min, cell);
+                    max = Vector2.Max(max, cell);
+                }
+
+
+                var center = (min + max) * .5f;
+                var extent = (max - min) * .5f;
+                fit = ((along * center.x + across * center.y) / drawSize, .435f / Mathf.Max(extent.x, extent.y));
+                _rockFits.Add(key, fit);
+            }
+
+            var rt = image.rectTransform;
+            rt.pivot = fit.pivot;
+
+            rt.sizeDelta = rockSizeDelta * Mathf.Min(1f, fit.scale / rt.localScale.x);
+        }
+
+
+
+
+
+
+
         static Rock.ChestKind PickChestVariant()
         {
             var lm = LevelMechanics.Instance;
             if (lm == null) return Rock.ChestKind.None;
 
-            // GoldenChest 가 더 희귀 — 먼저 roll.
+
             if (lm.HasTalent(TalentId.GoldenChests)
                 && Instance != null && !Instance.GoldenChestSpawnedThisSession
                 && D100Helper.Roll(0.005f))
             {
                 return Rock.ChestKind.Golden;
             }
-            // 0.04 → 0.006 (원본 rockSpawnChance=0.6f).
+
             if (lm.HasTalent(TalentId.Chests) && D100Helper.Roll(0.006f))
             {
                 return Rock.ChestKind.Chest;
@@ -254,12 +326,12 @@ namespace Rebuild.Mining
             return Rock.ChestKind.None;
         }
 
-        /// <summary>Tier 결정. SkillTree 의 {ore}Chunk / {ore}Full 레벨이 확률을 결정.
-        /// 각 Chunk lv = +10% Chunk 확률, 각 Full lv = +5% Full 확률. 합산 80% 초과시 cap.
-        /// 미구매 시 항상 Normal.
-        /// <para>.D — Meteorite artifact 의 effect 가 여기로 이동: 원본 RockMechanics.cs:846-857
-        /// 의 `fullXRockChance *= (1 + 0.03)` on 8 ores 매칭. Rune 의 secondary `fullXRockChance *=
-        /// (1 + 0.03 × runeImproveAll)` (RockMechanics.cs:897-905, 0.03 × 0.05 = 0.0015) 도 같이 적용.</para></summary>
+
+
+
+
+
+
         static RockTier PickTier(OreType ore)
         {
             var sk = SkillTreeManager.Instance;
@@ -267,7 +339,7 @@ namespace Rebuild.Mining
             int chunkLv = 0, fullLv = 0;
             switch (ore)
             {
-                case OreType.Gold: chunkLv = 0; fullLv = 0; break; // Gold 는 Chunk/Full 노드 없음 (base).
+                case OreType.Gold: chunkLv = 0; fullLv = 0; break;
                 case OreType.Copper:  chunkLv = sk.GetLevel(UpgradeId.CopperChunk);  fullLv = sk.GetLevel(UpgradeId.CopperFull);  break;
                 case OreType.Iron:    chunkLv = sk.GetLevel(UpgradeId.IronChunk);    fullLv = sk.GetLevel(UpgradeId.IronFull);    break;
                 case OreType.Cobalt:  chunkLv = sk.GetLevel(UpgradeId.CobaltChunk);  fullLv = sk.GetLevel(UpgradeId.CobaltFull);  break;
@@ -278,8 +350,8 @@ namespace Rebuild.Mining
             }
             float chunkChance = Mathf.Min(0.5f, chunkLv * 0.10f);
             float fullChance  = Mathf.Min(0.3f, fullLv  * 0.05f);
-            // Meteorite + Rune full-chance multiplier (원본 RockMechanics.cs:849-905).
-            // Meteorite: ×(1+0.03), Rune: ×(1+0.0015). Stack multiplicatively to match origin.
+
+
             if (ArtifactsManager.Instance != null)
             {
                 float fullMult = 1f;
@@ -290,7 +362,7 @@ namespace Rebuild.Mining
                 if (fullMult > 1f)
                     fullChance = Mathf.Min(0.3f, fullChance * fullMult);
             }
-            // Full 먼저 roll (드물고 보상 큰 tier 우선).
+
             float r = Random.value;
             if (r < fullChance) return RockTier.Full;
             if (r < fullChance + chunkChance) return RockTier.Chunk;
@@ -299,10 +371,10 @@ namespace Rebuild.Mining
 
         static OreType RollOre()
         {
-            // SkillTree ore-boost nodes bump the weight of Gold / Copper / Iron.
-            // Spawn nodes for Copper/Iron/Cobalt/Uranium/Ismium/Iridium/Painite each
-            // add +25 weight when purchased (1 level). Base weights stay (so Gold/Copper/Iron
-            // remain spawnable from session 1) — Spawn just amplifies the late-game ore presence.
+
+
+
+
             int goldBoost = 0, copperBoost = 0, ironBoost = 0;
             int copperSpawn = 0, ironSpawn = 0, cobaltSpawn = 0, uraniumSpawn = 0;
             int ismiumSpawn = 0, iridiumSpawn = 0, painiteSpawn = 0;
@@ -362,9 +434,9 @@ namespace Rebuild.Mining
             }
         }
 
-        /// <summary>per-ore Chunk+Full bonus drop count. Each level of the
-        /// matching Chunk/Full node adds +1 ore drop. Called by Rock.FadeAndDestroy.
-        /// Returns 0 if SkillTreeManager / matching nodes unavailable.</summary>
+
+
+
         public static int GetOreDropBonus(OreType ore)
         {
             var sk = SkillTreeManager.Instance;
@@ -382,25 +454,58 @@ namespace Rebuild.Mining
             }
         }
 
-        /// <summary>bonus spawn. Matches original <c>SetRockScreen.SpawnRockCount(1)</c>:
-        /// pick a random position in the row and spawn even if another rock already occupies it.</summary>
+        public void SpawnOneInEmptyCell()
+        {
+            if (_rows != null)
+                SpawnInRange(0, _rows.Length * _cachedTilesPerRow);
+        }
+
         public void SpawnOneInRow(RectTransform row)
         {
-            if (row == null || _cachedTilesPerRow <= 0) return;
-            float slot = _cachedTilesPerRow <= 1 ? 0f : Random.Range(0f, _cachedTilesPerRow - 1f);
-            var anchored = _cachedTileStart + _cachedTileStep * slot;
+            if (row == null || _rows == null) return;
+            int index = System.Array.IndexOf(_rows, row);
+            if (index >= 0) SpawnInRange(index * _cachedTilesPerRow, _cachedTilesPerRow);
+        }
 
-            // Original used a small random local offset per spawned rock. Keep it subtle so the
-            // isometric row still reads correctly, while stacked rocks do not land pixel-perfect.
-            float jitterX = Mathf.Abs(_cachedTileStep.x) * 0.10f;
-            float jitterY = Mathf.Abs(_cachedTileStep.y) * 0.10f;
-            anchored += new Vector2(Random.Range(-jitterX, jitterX), Random.Range(-jitterY, jitterY));
-            SpawnOne(row, anchored, RockSpriteFactory.GetRockSprite());
+        void SpawnInRange(int start, int count)
+        {
+            int available = 0;
+            int end = start + count;
+            for (int i = start; i < end; i++)
+                if (_cells[i] == null) available++;
+            if (available == 0) return;
+
+            int pick = Random.Range(0, available);
+            for (int i = start; i < end; i++)
+            {
+                if (_cells[i] != null) continue;
+                if (pick == 0)
+                {
+                    SpawnAtCell(i);
+                    return;
+                }
+                pick--;
+            }
+        }
+
+        void SpawnAtCell(int cell, bool allowReserve = true)
+        {
+            var row = _rows[cell / _cachedTilesPerRow];
+            int column = cell % _cachedTilesPerRow;
+            var rock = SpawnOne(row, _cachedTileStart + _cachedTileStep * column, RockSpriteFactory.GetRockSprite());
+            rock.GridCell = cell;
+            _cells[cell] = rock;
+
+            int rank = SkillTreeManager.Instance != null
+                ? SkillTreeManager.Instance.GetLevel(UpgradeId.ChanceToSpawnRockWhenMined) : 0;
+            float chance = UpgradeDef.GetAdditionalRockSpawnChance(rank);
+            if (allowReserve && chance > 0f && Random.value < chance)
+                rock.ShowReservedRockBadge();
         }
 
         static List<int> PickUniqueIndices(int max, int count)
         {
-            // Fisher–Yates-style partial shuffle, returning `count` unique indices in [0, max).
+
             var pool = new List<int>(max);
             for (int i = 0; i < max; i++) pool.Add(i);
             var result = new List<int>(count);

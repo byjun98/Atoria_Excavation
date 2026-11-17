@@ -5,9 +5,9 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>single skill-tree node card.
-    /// Subscribes to SkillTreeManager.OnUpgradeChanged + GoldAndOreMechanics.OnOreChanged
-    /// to keep the level / price / affordability state live.</summary>
+
+
+
     public sealed class UpgradeNodeUI : MonoBehaviour
     {
         [SerializeField] UpgradeId id;
@@ -106,7 +106,7 @@ namespace Rebuild.Mining
             if (priceLabel != null)
             {
                 if (st.IsMaxed(id)) priceLabel.text = "최대";
-                // 큰 가격 (1M+ Painite 등) K/M/B/T 축약.
+
                 else priceLabel.text = $"{OreLocalization.OreNameKr(st.GetCurrency(id))} {Rebuild.Util.FormatNumbers.Format(st.GetNextPrice(id))}";
             }
             RefreshAffordability();
@@ -122,7 +122,7 @@ namespace Rebuild.Mining
             if (buyButton != null) buyButton.interactable = canAfford;
             if (buyImage != null)
             {
-                // Dim when unaffordable / maxed; full colour when ready.
+
                 Color c = _baseImageColor;
                 if (maxed) c = new Color(0.35f, 0.35f, 0.35f, _baseImageColor.a);
                 else if (!canAfford) c = new Color(_baseImageColor.r * 0.6f, _baseImageColor.g * 0.6f, _baseImageColor.b * 0.6f, _baseImageColor.a);
@@ -148,7 +148,7 @@ namespace Rebuild.Mining
                 buyImage.color = Color.Lerp(flash, _baseImageColor, Mathf.Clamp01(t / dur));
                 yield return null;
             }
-            // Make sure affordability re-applies the final tint.
+
             RefreshAffordability();
             _flashCo = null;
         }

@@ -1,30 +1,29 @@
 Third-party notices
 
-Project-owned art
------------------
+Project assets
 
-The PNG assets under Assets/Resources/Sprites/ are original AI-generated
-images created by the project owner for this project. Commercial stock asset
-packs, imported audio, legacy sprite dumps, and copied plugin assets are not
-included in the public source candidate.
+The repository includes Atoria-specific runtime sprites, textures, effects, and
+museum models. Some of this art was generated with AI tools, including the
+Atoria logo, background illustrations, skill icons, and museum surface texture.
+Commercial Asset Store packages, original-game asset dumps, and imported audio
+are outside the public source distribution.
 
 Fonts
------
 
-Assets/Fonts/LuckiestGuy.ttf
-Generated asset: Assets/Fonts/LuckiestGuy SDF.asset
-Font: Luckiest Guy Regular
-Copyright: Copyright (c) 2010 Brian J. Bonislawsky DBA Astigmatic (AOETI)
-License: Apache License 2.0
-Source/license: https://github.com/google/fonts/tree/main/apache/luckiestguy
+Luckiest Guy Regular
+Copyright (c) 2010 Brian J. Bonislawsky DBA Astigmatic (AOETI).
+Files: Assets/Fonts/LuckiestGuy.ttf and the associated Unity font atlas.
+License: Apache License 2.0, LICENSES/LuckiestGuy-Apache-2.0.txt.
+Source: https://github.com/google/fonts/tree/main/apache/luckiestguy
 
-Assets/Fonts/Pretendard-Regular.ttf
-Generated asset: Assets/Fonts/PretendardStd-Regular SDF.asset
-Font: Pretendard Regular
-Copyright:
-  Copyright (c) 2021 Kil Hyung-jin, with Reserved Font Name "Pretendard".
-  Copyright 2014-2021 Adobe, with Reserved Font Name "Source".
-  Copyright (c) 2016 The Inter Project Authors, with Reserved Font Name "Inter".
-  Copyright 2021 The M+ FONTS Project Authors, with Reserved Font Name "M PLUS 1".
-License: SIL Open Font License 1.1
-Source/license: https://github.com/orioncactus/pretendard/blob/main/LICENSE
+Pretendard Regular
+Copyright (c) 2021 Kil Hyung-jin and the upstream authors listed in the license.
+Files: Assets/Fonts/Pretendard-Regular.ttf and the associated Unity font atlas.
+License: SIL Open Font License 1.1, LICENSES/Pretendard-OFL-1.1.txt.
+Source: https://github.com/orioncactus/pretendard
+
+Unity dependencies
+
+Unity Package Manager resolves the dependencies in Packages/manifest.json,
+including uGUI (with TextMesh Pro) and glTFast. These dependencies retain the
+license terms supplied with each package.

@@ -3,9 +3,9 @@ using UnityEngine.Audio;
 
 namespace Rebuild.Audio
 {
-    /// <summary>Single named clip + AudioSource bundle.
-    /// Wired in the Inspector; Awake on <see cref="AudioManager"/>
-    /// dynamically creates the AudioSource and copies the per-clip volume/pitch/loop into it.</summary>
+
+
+
     [System.Serializable]
     public sealed class Sound
     {
@@ -19,8 +19,8 @@ namespace Rebuild.Audio
         [HideInInspector] public AudioSource source;
     }
 
-    /// <summary>broad routing buckets so a Settings slider can mute/dim each
-    /// independently (Music vs gameplay SFX vs UI clicks).</summary>
+
+
     public enum AudioType
     {
         Music = 0,

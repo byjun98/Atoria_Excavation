@@ -4,14 +4,15 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>TimeIsOut_Frame.
-    /// Shows the 8-ore per-session counts and exposes Keep-Mining / Return-to-Menu buttons.
-    /// </summary>
+
+
+
     public sealed class SessionResultsUI : MonoBehaviour
     {
         [Header("Layout")]
         [SerializeField] GameObject panelRoot;
         [SerializeField] TMP_Text[] oreCountLabels = new TMP_Text[8];
+        [SerializeField] TMP_Text[] barCountLabels = new TMP_Text[8];
         [SerializeField] Image[] oreIcons = new Image[8];
         [SerializeField] TMP_Text[] oreNameLabels = new TMP_Text[8];
 
@@ -30,10 +31,10 @@ namespace Rebuild.Mining
 
         void Awake()
         {
-            // Note: we deliberately do NOT toggle panelRoot off here.
-            // panelRoot is wired to this GameObject itself, so Show() → SetActive(true)
-            // triggers Awake — disabling here would create a race that hides the panel
-            // the moment it is shown. Scene setup starts it inactive.
+
+
+
+
             ApplyOreVisuals();
         }
 
@@ -44,8 +45,8 @@ namespace Rebuild.Mining
                 if (oreIcons[i] != null)
                 {
                     var ore = (Rebuild.Mining.OreType)i;
-                    // SpriteLibrary 의 OreHud icon 우선 사용 (사용자 PNG).
-                    // 없으면 base rock + tint fallback.
+
+
                     var hudSprite = SpriteLibrary.GetOreHudIcon(ore);
                     if (hudSprite != null)
                     {
@@ -76,35 +77,42 @@ namespace Rebuild.Mining
             Show(sessionGained, barsCrafted: null, xpThisSession, levelsGained, talentPointsGained);
         }
 
-        /// <summary>preferred overload. Shows raw ore mined this session alongside
-        /// the bars crafted from the session's CraftOres conversion.
-        /// Format per row: "<c>+12 → 4주괴</c>" (raw → bars). If <paramref name="barsCrafted"/>
-        /// is null we fall back to the "+N" raw-only display.</summary>
+
+
+
+
         public void Show(long[] sessionGained, long[] barsCrafted, int xpThisSession, int levelsGained, int talentPointsGained)
         {
             if (panelRoot != null) panelRoot.SetActive(true);
-            // 결과 패널 표시 중 ore HUD hide. 백그라운드 TheMine tick 이
-            // ore count 갱신하면서 결과 화면 위 어색하게 변경되는 문제 회피.
+
+
             if (OreCounterUI.Instance != null) OreCounterUI.Instance.gameObject.SetActive(false);
             for (int i = 0; i < 8 && i < oreCountLabels.Length; i++)
             {
                 if (oreCountLabels[i] == null) continue;
                 long ore = (sessionGained != null && i < sessionGained.Length) ? sessionGained[i] : 0L;
                 long bars = (barsCrafted != null && i < barsCrafted.Length) ? barsCrafted[i] : 0L;
-                if (ore <= 0 && bars <= 0)
+                if (barCountLabels != null && i < barCountLabels.Length && barCountLabels[i] != null)
+                {
+                    oreCountLabels[i].text = Rebuild.Util.FormatNumbers.Format(ore);
+                    barCountLabels[i].text = Rebuild.Util.FormatNumbers.Format(bars);
+                    oreCountLabels[i].color = Rebuild.UI.MuseumUiTheme.Text;
+                    barCountLabels[i].color = Rebuild.UI.MuseumUiTheme.Jade;
+                }
+                else if (ore <= 0 && bars <= 0)
                 {
                     oreCountLabels[i].text = "0";
                     oreCountLabels[i].color = new Color(0.65f, 0.65f, 0.65f, 1f);
                 }
                 else if (barsCrafted == null)
                 {
-                    // legacy display path (no conversion data).
+
                     oreCountLabels[i].text = "+" + ore;
                     oreCountLabels[i].color = Color.white;
                 }
                 else
                 {
-                    // show ore -> bars conversion in one cell.
+
                     oreCountLabels[i].text = $"+{ore}  →  {bars}";
                     oreCountLabels[i].color = Color.white;
                 }
@@ -132,7 +140,7 @@ namespace Rebuild.Mining
         public void Hide()
         {
             if (panelRoot != null) panelRoot.SetActive(false);
-            // 결과 패널 hide 시 ore HUD 다시 보이게.
+
             if (OreCounterUI.Instance != null) OreCounterUI.Instance.gameObject.SetActive(true);
         }
     }

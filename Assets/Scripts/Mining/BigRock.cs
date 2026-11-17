@@ -6,18 +6,18 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>the endgame BigRock + hover-channel refit.
-    /// Lives under Canvas_Ending. Hover-tick (same model as Rock.cs) channels damage every
-    /// <c>MineTime</c> seconds while the pointer is over the rock. HP defaults to 200 (original
-    /// 3500 + 3 broken sprite stages — ). Damage borrows the same multipliers
-    /// Rock.cs uses so endgame upgrades still feel meaningful.</summary>
+
+
+
+
+
     [RequireComponent(typeof(Image))]
     public sealed class BigRock : MonoBehaviour,
         IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
     {
-        // Original BigRock HP = 3500. Three
-        // sprite stages swap as HP drops past 66.7% / 33.3% thresholds. Long ceremony lets the
-        // 14-stage pickaxe roster contribute meaningfully even at +8 minePower (~440 hits).
+
+
+
         [SerializeField] int maxHp = 3500;
         [SerializeField] float punchDuration = 0.10f;
         [SerializeField] float punchScale = 0.92f;
@@ -26,8 +26,8 @@ namespace Rebuild.Mining
         [Tooltip("Fallback mine-time if no pickaxe is equipped.")]
         [SerializeField] float defaultMineTime = 0.45f;
 
-        // sprite swap thresholds. Above stage1 = stage 0, between = stage 1,
-        // below stage2 = stage 2. Matches original 1/3 / 2/3 transitions.
+
+
         const float kStage1Threshold = 0.667f;
         const float kStage2Threshold = 0.333f;
 
@@ -69,10 +69,10 @@ namespace Rebuild.Mining
             OnHpChanged?.Invoke(_hp, maxHp);
         }
 
-        /// <summary>swap to the appropriate damaged-stage sprite. Sprite 0 = full,
-        /// 1 = ~1/3 damaged, 2 = ~2/3 damaged. SpriteLibrary loads from Sprites/Ending/BigRock_1..3
-        /// (user PNGs). Silently no-ops when the slot is empty so missing art still leaves
-        /// the original BigRock sprite visible.</summary>
+
+
+
+
         void UpdateSpriteStage()
         {
             if (_img == null) return;
@@ -102,8 +102,8 @@ namespace Rebuild.Mining
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            // Click is a no-op channel-style — Enter already paid the first damage. Kept for
-            // accessibility and mobile tap fallback (Enter+Click+Exit in same frame).
+
+
         }
 
         void Update()
@@ -133,9 +133,9 @@ namespace Rebuild.Mining
                     if (candidate > 0f) t = candidate;
                 }
             }
-            // Bone artifact 의 secondary effect 복원 (원본 RockMechanics.cs:843-844).
-            // bonePickaxeIncrease=0.04 → damage +4% AND reducePickaxeMineTime -= 0.04 → click cadence -4%.
-            // MiningCursorUI.CurrentMineTime 과 동일 식 (분모에 합산). Rune 의 secondary -0.001 도 포함.
+
+
+
             float reduceTotal = 0f;
             if (ArtifactsManager.Instance != null)
             {
@@ -143,8 +143,8 @@ namespace Rebuild.Mining
                 if (ArtifactsManager.Instance.HasArtifact(ArtifactId.Rune)) reduceTotal += 0.001f;
             }
             if (reduceTotal > 0f) t /= (1f + reduceTotal);
-            // EnergiDrinker boost. 원본은 모든 hand collider mining 에
-            // mineTime ÷ 2 적용 → BigRock 도 같은 boost 받음.
+
+
             if (MiningSessionController.Instance != null && MiningSessionController.Instance.IsEnergiBoosted)
                 t *= 0.5f;
             return t;
@@ -153,14 +153,14 @@ namespace Rebuild.Mining
         void ApplyOneTick()
         {
             if (_isDying) return;
-            // fractional pickaxe damage (mirrors Rock.ApplyOneTick).
-            // Rock.ApplyExternalHit 의 multiplier 체인 매칭. BigRock 은 endgame
-            // boulder 인데 두 큰 multiplier (DoubleDamageChance SkillTree + Anvil DoublePowerChance) 가
-            // 누락이었음 → BigRock 진행도 24%+6.5% 약화.
+
+
+
+
             float dmg = 1f;
             if (AnvilManager.Instance != null)
                 dmg += AnvilManager.Instance.CurrentDamageBonus;
-            // Rock 과 동일한 multiplicative pickaxe-strength chain (원본 매칭).
+
             float strengthMult = 1f;
             var sk = SkillTreeManager.Instance;
             if (sk != null)
@@ -171,10 +171,10 @@ namespace Rebuild.Mining
             if (PotionBuffMechanics.Instance != null)
                 strengthMult += PotionBuffMechanics.Instance.PotionPickaxeStats;
             if (strengthMult != 1f) dmg *= strengthMult;
-            // same multiplier model as Rock.ApplyExternalHit (Bone +4 / WolfClaw +6 / Rune +5 %).
-            // WolfClaw 의 clawChance × (1 + RuneBonus) multiplier chain 적용
-            // (원본 TheAnvil.cs:2358 `clawChance × (1 + runeImproveAll + archeologistIncrease)`).
-            // Archaeologist multi-site multiplier 매칭 (Rock.ApplyExternalHit 와 동일).
+
+
+
+
             if (ArtifactsManager.Instance != null)
             {
                 float artifactMult = 1f;
@@ -188,8 +188,8 @@ namespace Rebuild.Mining
                 if (ArtifactsManager.Instance.HasArtifact(ArtifactId.Rune)) artifactMult += 0.05f;
                 dmg *= artifactMult;
             }
-            // DoubleDamageChance (SkillTree) roll. Rock 의 동일 패턴 복사.
-            // rate 는 *0.01f 매칭 (원본 doubleDamageChance 1f/2f, maxLv=2).
+
+
             if (sk != null)
             {
                 float doubleDmgChance = sk.GetLevel(UpgradeId.DoubleDamageChance) * 0.01f;
@@ -199,8 +199,8 @@ namespace Rebuild.Mining
                     Rebuild.Stats.StatsManager.Instance?.RecordDoubleDamage();
                 }
             }
-            // Anvil DoublePowerChance: equipped pickaxe 의 2X Power Chance 발동
-            // (Pickaxe14 의 6.5% buff 등). SkillTree DoubleDamageChance 와 별개. 원본 Rock 과 동일.
+
+
             if (AnvilManager.Instance != null)
             {
                 float anvilDouble = AnvilManager.Instance.CurrentDoublePowerChance;
@@ -211,8 +211,8 @@ namespace Rebuild.Mining
                 }
             }
             TakeDamage(Mathf.RoundToInt(dmg));
-            // (v2) — spawn pickaxe swing fx ON the BigRock itself
-            // (sits as a sibling so anchored coords align without conversion).
+
+
             var rt = transform as RectTransform;
             if (rt != null)
                 MiningCursorUI.Instance?.PlaySwingAt(transform.parent, rt.anchoredPosition);
@@ -273,13 +273,13 @@ namespace Rebuild.Mining
             _img.raycastTarget = false;
             Rebuild.Audio.OverlappingSounds.Instance?.PlayRockBreak();
 
-            // much bigger chunk burst (BigRock is the endgame boulder). Original game
-            // uses localScale=10 vs 2.6 — we pass spread=3 so chunk count + travel distance scale.
+
+
             var rtSelf = transform as RectTransform;
             if (rtSelf != null && transform.parent != null)
                 RockBreakParticleFx.Spawn(transform.parent, rtSelf.anchoredPosition, 3f);
 
-            // heavier shake for the BigRock break (0.2s vs 0.1s, 8px vs 4px).
+
             ScreenShake.Instance?.Shake(0.20f, 8f);
 
             float t = 0f;

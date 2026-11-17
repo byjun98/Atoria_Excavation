@@ -4,11 +4,11 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>
-    /// 14x14 = 196 isometric diamond tile grid. Builds the grid on demand and runs the
-    /// per-row wave entry animation. Rock spawning lives in (TileGrid will hand off
-    /// row references to SpawnRocks at the end of each TileRowUpDown).
-    /// </summary>
+
+
+
+
+
     public sealed class TileGrid : MonoBehaviour
     {
         public const int Rows = 14;
@@ -19,14 +19,14 @@ namespace Rebuild.Mining
         [SerializeField] float tilesScale = 0.963f;
         [SerializeField] Vector2 rowOriginStart = new Vector2(600f, -293f);
         [SerializeField] Vector2 rowOriginStep = new Vector2(-70f, 34.6f);
-        // Each row is scaled down so its child tile spacing visually matches the
-        // (row_x_step, row_y_step) above — without this, tiles spread out 2.2× too far.
-        // Value taken from original SetRockScreen.SetAllTiles: tileRow[N].localScale = 0.45562.
+
+
+
         [SerializeField] float rowScale = 0.45562f;
         [SerializeField] Vector2 tileStartInRow = new Vector2(1160f, 330f);
         [SerializeField] Vector2 tileStepInRow = new Vector2(-153.5f, -76.4f);
-        // 2x the row spacing so adjacent diamonds meet edge-to-edge (no gaps between cells).
-        // After rowScale (0.45562) is applied, visual = (140, 69.2) ≈ 2 * (row x_step 70, row y_step 34.6).
+
+
         [SerializeField] Vector2 tileSize = new Vector2(307f, 151.88f);
 
         [Header("Wave animation")]
@@ -36,6 +36,7 @@ namespace Rebuild.Mining
 
         [Header("Tile prefab fields")]
         [SerializeField] Color tileColor = Color.white;
+        [SerializeField] Texture2D groundTexture;
 
         RectTransform _tilesRoot;
         RectTransform[] _rowContainers;
@@ -45,6 +46,7 @@ namespace Rebuild.Mining
         public RectTransform[] RowContainers => _rowContainers;
         public Vector2 TileStartInRow => tileStartInRow;
         public Vector2 TileStepInRow => tileStepInRow;
+        public Vector2 TileAcrossInRow => rowOriginStep / rowScale;
         public int TilesPerRow => Cols;
 
         public void BuildIfNeeded()
@@ -60,15 +62,15 @@ namespace Rebuild.Mining
             _rowContainers = new RectTransform[Rows];
             _rowRestPos = new Vector2[Rows];
 
-            // prefer the user-authored Tile PNG (Sprites/World/Tile) over the runtime
-            // diamond. Falls back to the dirt generator when the slot is empty *or* when
-            // the user PNG isn't isometric.
-            //
-            // 🚨 자동 reject 규칙: 사용자가 isometric (가로:세로 ≈ 2:1) 다이아몬드 대신
-            //    1:1 비율의 정사각형 (rotated square) 또는 일반 사각형 tile 을 그리는 경우가
-            //    흔함. alpha-trimmed aspect ratio < 1.6 이면 isometric 이 아니라고 판단해서
-            //    fallback runtime diamond 를 사용. (이상적인 isometric 다이아몬드 = 2.0)
-            var userTile = SpriteLibrary.GetTileSprite();
+
+
+
+
+
+
+
+
+            var userTile = groundTexture == null ? SpriteLibrary.GetTileSprite() : null;
             if (userTile != null && userTile.textureRect.height > 0f)
             {
                 float aspect = userTile.textureRect.width / userTile.textureRect.height;
@@ -82,7 +84,7 @@ namespace Rebuild.Mining
                     userTile = null;
                 }
             }
-            var dirtSprite = userTile != null ? userTile : TileSpriteFactory.GetDirtDiamond();
+            var dirtSprite = groundTexture == null ? (userTile ?? TileSpriteFactory.GetDirtDiamond()) : null;
             Vector2 cellSize = tileSize;
             if (userTile != null)
             {
@@ -101,6 +103,18 @@ namespace Rebuild.Mining
                 row.localScale = new Vector3(rowScale, rowScale, 1f);
                 _rowContainers[i] = row;
                 _rowRestPos[i] = rowPos;
+
+                if (groundTexture != null)
+                {
+                    var surface = GetOrCreateChildRect(row, "GroundSurface");
+                    surface.anchorMin = surface.anchorMax = surface.pivot = new Vector2(.5f, .5f);
+                    surface.anchoredPosition = Vector2.zero;
+                    surface.sizeDelta = new Vector2(Mathf.Abs(tileStepInRow.x) * 2f * Cols, Mathf.Abs(tileStepInRow.y) * 2f * Cols);
+                    surface.SetAsFirstSibling();
+                    var graphic = surface.GetComponent<MiningGroundRow>() ?? surface.gameObject.AddComponent<MiningGroundRow>();
+                    graphic.Initialize(groundTexture, tileStartInRow, TileAcrossInRow, tileStepInRow, i, tileColor);
+                    continue;
+                }
 
                 for (int j = 0; j < Cols; j++)
                 {
@@ -142,7 +156,7 @@ namespace Rebuild.Mining
             }
         }
 
-        /// <summary>Plays the row-by-row wave entry. Returns when all rows have settled.</summary>
+
         public IEnumerator PlayWaveAnim()
         {
             BuildIfNeeded();
@@ -153,7 +167,7 @@ namespace Rebuild.Mining
                 StartCoroutine(TileRowUpDown(i));
                 yield return new WaitForSecondsRealtime(rowStagger);
             }
-            // wait for the last row's full bounce so the caller knows the wave is done
+
             yield return new WaitForSecondsRealtime(upHalfDuration * 2f);
         }
 

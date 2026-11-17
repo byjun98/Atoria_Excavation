@@ -6,18 +6,18 @@ using UnityEngine.Audio;
 
 namespace Rebuild.Audio
 {
-    /// <summary>central named-sound dispatcher.
-    /// Singleton on Canvas_Audio. The Sound[] array is wired in the Inspector.
-    /// On Awake the manager spawns one AudioSource per entry, copies its parameters, and
-    /// indexes by name for O(1) <see cref="Play(string)"/> lookups.
-    ///
-    /// UI clips (Click_1 / HoverUI / FadeIn etc.) get a ±10% pitch randomisation so rapid
-    /// clicks don't sound metronome-flat.
-    ///
-    /// persists three volume scalars (master / music / sfx). Master drives
-    /// <see cref="AudioListener.volume"/> globally; SFX is multiplied into every PlayOneShot
-    /// inside this manager + OverlappingSounds; Music is applied by SettingsPanelUI to the
-    /// BGM AudioSource it owns a ref to.</summary>
+
+
+
+
+
+
+
+
+
+
+
+
     public sealed class AudioManager : MonoBehaviour, Rebuild.Saving.IDataPersistence
     {
         public static AudioManager Instance { get; private set; }
@@ -29,7 +29,7 @@ namespace Rebuild.Audio
 
         [SerializeField, Range(0f, 0.2f)] float uiPitchJitter = 0.10f;
 
-        // persistent mix.
+
         [SerializeField, Range(0f, 1f)] float masterVolume = 1f;
         [SerializeField, Range(0f, 1f)] float musicVolume = 1f;
         [SerializeField, Range(0f, 1f)] float sfxVolume = 1f;
@@ -64,9 +64,9 @@ namespace Rebuild.Audio
                 src.outputAudioMixerGroup = ResolveGroup(s.audioType);
                 s.source = src;
                 _byName[s.name] = s;
-                // looping clips (BonfireLoop / CreditsMusic) MUST be triggered
-                // explicitly via Play(name) so they only run while their owning system is active.
-                // Auto-starting every loop clip on Awake made BonfireLoop hum from the title screen.
+
+
+
             }
         }
 
@@ -86,14 +86,14 @@ namespace Rebuild.Audio
             }
         }
 
-        /// <summary>Play the named clip (one-shot if non-looping). Silently no-ops if the name
-        /// or its source isn't wired — protects gameplay code from hard-failing during Shell.</summary>
+
+
         public void Play(string name)
         {
             if (_byName == null || string.IsNullOrEmpty(name)) return;
             if (!_byName.TryGetValue(name, out var s)) return;
             if (s.source == null || s.clip == null) return;
-            // UI clips get a small ±jitter so rapid taps feel natural.
+
             s.source.pitch = s_uiPitchRandomNames.Contains(name)
                 ? s.pitch * (1f + UnityEngine.Random.Range(-uiPitchJitter, uiPitchJitter))
                 : s.pitch;
@@ -101,7 +101,7 @@ namespace Rebuild.Audio
             else        { s.source.PlayOneShot(s.clip, s.volume * sfxVolume); }
         }
 
-        // ---- volume API ----
+
         public void SetMasterVolume(float v)
         {
             masterVolume = Mathf.Clamp01(v);
@@ -121,7 +121,7 @@ namespace Rebuild.Audio
             OnVolumesChanged?.Invoke();
         }
 
-        // ---- IDataPersistence ----
+
         public void LoadData(GameDataDTO data)
         {
             if (data == null) return;

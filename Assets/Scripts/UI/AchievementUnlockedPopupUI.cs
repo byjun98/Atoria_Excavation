@@ -7,10 +7,10 @@ using UnityEngine.UI;
 
 namespace Rebuild.UI
 {
-    /// <summary>slide-in toast at the top of the screen when an achievement unlocks.
-    /// Lives on Canvas_AchievementUnlocked (sortingOrder 306). Multiple unlocks queue up so a
-    /// flurry of milestones (first session can hit FirstRock + Centurion at once with Talents)
-    /// each gets its moment on screen.</summary>
+
+
+
+
     public sealed class AchievementUnlockedPopupUI : MonoBehaviour
     {
         public static AchievementUnlockedPopupUI Instance { get; private set; }
@@ -78,10 +78,10 @@ namespace Rebuild.UI
                 swatch.color = info.Tint;
             }
 
-            // dedicated Achievement sting (falls back to FoundArtifact when clip missing).
+
             Rebuild.Audio.AudioManager.Instance?.Play("Achievement");
 
-            // Slide in from above + fade in.
+
             if (card != null) card.anchoredPosition = new Vector2(card.anchoredPosition.x, slideDistance);
             if (group != null) group.alpha = 0f;
             float t = 0f;
@@ -99,10 +99,10 @@ namespace Rebuild.UI
             if (card != null) card.anchoredPosition = endPos;
             if (group != null) group.alpha = 1f;
 
-            // Hold.
+
             yield return new WaitForSecondsRealtime(holdDuration);
 
-            // Slide back up + fade out.
+
             t = 0f;
             while (t < slideDuration)
             {

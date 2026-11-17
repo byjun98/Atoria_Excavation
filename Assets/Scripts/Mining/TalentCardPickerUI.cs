@@ -7,29 +7,29 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>Talent card picker.
-    /// Shows up to 3 random unchosen talents. Clicking one applies it (LevelMechanics.ChooseTalent)
-    /// and raises <see cref="OnCardChosen"/>. The session controller re-invokes <see cref="Show"/>
-    /// if there are still talent points to spend, otherwise hides the panel and resumes the results flow.
-    /// </summary>
+
+
+
+
+
     public sealed class TalentCardPickerUI : MonoBehaviour
     {
         [SerializeField] GameObject panelRoot;
         [SerializeField] TMP_Text titleText;
         [SerializeField] Button[] cardButtons = new Button[3];
-        /// <summary>top accent stripe inside each card. Tinted with TalentDef.Tint
-        /// so the card still carries the talent's identity color, while the rest of the card
-        /// stays on the 단청 갈 panel tone.</summary>
+
+
+
         [SerializeField] Image[] cardImages = new Image[3];
-        /// <summary>talent icon (resolved via SpriteLibrary, falls back to rock + tint).</summary>
+
         [SerializeField] Image[] cardIcons = new Image[3];
         [SerializeField] TMP_Text[] cardNames = new TMP_Text[3];
         [SerializeField] TMP_Text[] cardDescs = new TMP_Text[3];
 
         readonly TalentId[] _currentDraw = new TalentId[3];
         readonly bool[] _slotFilled = new bool[3];
-        // cache the initial transform pose so the bezier+CardDown animations can
-        // snap each card back to its slot on the next Show() call.
+
+
         Vector2[] _initialPositions;
         Vector3[] _initialScales;
 
@@ -39,10 +39,10 @@ namespace Rebuild.Mining
         {
             _initialPositions = new Vector2[cardButtons.Length];
             _initialScales = new Vector3[cardButtons.Length];
-            // Hook button click handlers once. Awake is safe because panelRoot is a sibling, not this GO.
+
             for (int i = 0; i < cardButtons.Length; i++)
             {
-                int idx = i; // capture
+                int idx = i;
                 if (cardButtons[i] == null) continue;
                 cardButtons[i].onClick.RemoveAllListeners();
                 cardButtons[i].onClick.AddListener(() => OnSlotClicked(idx));
@@ -56,7 +56,7 @@ namespace Rebuild.Mining
         {
             if (panelRoot != null) panelRoot.SetActive(true);
 
-            // Draw up to 3 unique random from candidates.
+
             var pool = new List<TalentId>(candidates);
             for (int i = 0; i < cardButtons.Length; i++)
             {
@@ -91,7 +91,7 @@ namespace Rebuild.Mining
         {
             var info = TalentDef.Get(id);
 
-            // Tint stripe — talent identity color stays as a top accent.
+
             if (idx < cardImages.Length && cardImages[idx] != null)
             {
                 var tint = info.Tint;
@@ -99,7 +99,7 @@ namespace Rebuild.Mining
                 cardImages[idx].color = tint;
             }
 
-            // Icon — user-supplied via SpriteLibrary, fallback rock + tint.
+
             if (idx < cardIcons.Length && cardIcons[idx] != null)
             {
                 var iconSprite = SpriteLibrary.GetTalentIcon(id);
@@ -121,8 +121,8 @@ namespace Rebuild.Mining
             if (idx < cardDescs.Length && cardDescs[idx] != null) cardDescs[idx].text = info.Description;
             if (idx < cardButtons.Length && cardButtons[idx] != null)
             {
-                // reset transform pose so the previous Show()'s bezier exit /
-                // CardDown slide don't carry over into the next picker invocation.
+
+
                 var rt = (RectTransform)cardButtons[idx].transform;
                 if (_initialPositions != null) rt.anchoredPosition = _initialPositions[idx];
                 if (_initialScales != null) rt.localScale = _initialScales[idx];
@@ -144,18 +144,18 @@ namespace Rebuild.Mining
         {
             if (!_slotFilled[idx]) return;
             if (LevelMechanics.Instance == null) return;
-            // Lock all buttons so a fast double-click doesn't double-spend.
+
             for (int i = 0; i < cardButtons.Length; i++)
                 if (cardButtons[i] != null) cardButtons[i].interactable = false;
-            // Apply the talent immediately so downstream systems (Camper, etc.) react ASAP.
+
             LevelMechanics.Instance.ChooseTalent(_currentDraw[idx]);
             Rebuild.Audio.AudioManager.Instance?.Play("CardClick");
 
-            // Bezier card move + dismiss animation. Mirrors original
-            // LevelMechanics.MoveCardToUnlockedTalents (prep punch 0.45s → CardWoosh →
-            // bezier move 0.5s + scale shrink + 360° spin → CardPop). Unselected cards
-            // slide down (CardDown) over the same window. Coroutine fires OnCardChosen
-            // at the end so the session controller knows when to refresh.
+
+
+
+
+
             if (gameObject.activeInHierarchy)
             {
                 if (_animCo != null) StopCoroutine(_animCo);
@@ -163,14 +163,14 @@ namespace Rebuild.Mining
             }
             else
             {
-                // Panel inactive (rare — e.g. tab switched mid-click): skip animation.
+
                 OnCardChosen?.Invoke();
             }
         }
 
         IEnumerator DismissAnimation(int chosenIdx)
         {
-            // step 1 — unselected cards slide down + shrink (parallel coroutines).
+
             for (int i = 0; i < cardButtons.Length; i++)
             {
                 if (i == chosenIdx) continue;
@@ -178,7 +178,7 @@ namespace Rebuild.Mining
                 StartCoroutine(CardDown(cardButtons[i].transform));
             }
 
-            // step 2 — chosen card prep: scale 1 → 1.15 over 0.45s.
+
             var chosenBtn = cardButtons[chosenIdx];
             if (chosenBtn == null)
             {
@@ -197,13 +197,13 @@ namespace Rebuild.Mining
                 chosenRT.localScale = baseScale * Mathf.Lerp(1f, 1.15f, k);
                 yield return null;
             }
-            // 0.2s hold then CardWoosh.
+
             yield return new WaitForSecondsRealtime(0.2f);
             Rebuild.Audio.AudioManager.Instance?.Play("CardWoosh");
 
-            // step 3 — Bezier move (start → mid hump up → end at top-center) +
-            // scale 1.15 → 0.2 + Z-rotation 360°. SmoothStep on the parameter t.
-            Vector2 endPos = new Vector2(0f, 480f); // top-center target (panel-local).
+
+
+            Vector2 endPos = new Vector2(0f, 480f);
             Vector2 midPos = new Vector2((startPos.x + endPos.x) * 0.5f,
                                           Mathf.Max(startPos.y, endPos.y) + 220f);
             const float moveDur = 0.5f;
@@ -220,7 +220,7 @@ namespace Rebuild.Mining
                 yield return null;
             }
 
-            // CardPop on arrival.
+
             Rebuild.Audio.AudioManager.Instance?.Play("CardPop");
             chosenBtn.gameObject.SetActive(false);
 

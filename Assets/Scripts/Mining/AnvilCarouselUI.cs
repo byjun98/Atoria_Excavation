@@ -7,10 +7,10 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>Anvil carousel UI. Replaces the 14-grid card layout with a single
-    /// spotlight slot + left/right arrows + 4-stat panel (Mine Time / Power / 2X / Area) + cost rows
-    /// + action button. Subscribes to AnvilManager and GoldAndOreMechanics to keep state live.
-    /// Delta lines vs the currently equipped pickaxe show ▴/▾ in 옥색 (better) or 단청 적 (worse).</summary>
+
+
+
+
     public sealed class AnvilCarouselUI : MonoBehaviour
     {
         [Serializable]
@@ -26,7 +26,7 @@ namespace Rebuild.Mining
         [SerializeField] TMP_Text nameLabel;
         [SerializeField] GameObject equippedBadge;
         [SerializeField] TMP_Text counterLabel;
-        [SerializeField] Image spotlightRay;     // optional — pulsed alpha for "shine" feel
+        [SerializeField] Image spotlightRay;
 
         [Header("Stats (4) — value lines")]
         [SerializeField] TMP_Text mineTimeValue;
@@ -49,7 +49,7 @@ namespace Rebuild.Mining
         [SerializeField] Image actionImage;
         [SerializeField] TMP_Text actionLabel;
         [SerializeField] GameObject craftingOverlay;
-        // hold-to-craft.
+
         [Tooltip("Sits on the same GameObject as actionButton; relays pointer down/up.")]
         [SerializeField] PointerHoldForwarder actionHoldForwarder;
         [Tooltip("Radial-fill Image (FillMethod.Radial360) painted on top of the action button while crafting.")]
@@ -61,24 +61,24 @@ namespace Rebuild.Mining
         [SerializeField] Button leftArrow;
         [SerializeField] Button rightArrow;
 
-        // skin selector. spotlight 아래 1줄 (Prev "<" + Label + Next ">"). idx 13 (마지막
-        // 곡괭이) 면 skin variant 없으므로 selector 전체 hide. 기존에 PNG 가 없어도 0/1/2 선택은 가능
-        // (시각 차이 없음 — SpriteLibrary 가 base sprite 로 fallback).
+
+
+
         [Header("Skin selector")]
         [SerializeField] GameObject skinSelectorRoot;
         [SerializeField] Button skinPrevBtn;
         [SerializeField] Button skinNextBtn;
         [SerializeField] TMP_Text skinLabel;
 
-        // equipped-pickaxe sidecar (top-right of carousel). Lets the player
-        // see what's currently equipped while comparing other pickaxes in the spotlight.
+
+
         [Header("Equipped sidecar")]
         [SerializeField] GameObject equippedSidecarRoot;
         [SerializeField] Image equippedIcon;
         [SerializeField] TMP_Text equippedNameLabel;
 
-        // celebration popup parent. Anchored RectTransform centered on the carousel
-        // (or its panel) so PickaxeCraftPopupFx spawns where the player is already looking.
+
+
         [Header("Craft popup")]
         [SerializeField] RectTransform popupParent;
 
@@ -86,18 +86,18 @@ namespace Rebuild.Mining
         Color _baseActionColor;
         Coroutine _flashCo;
         Coroutine _pulseCo;
-        bool _completedThisHold;   // suppresses OnPointerUp cancel after a finished craft.
-        bool _holdingForCraft;     // True between Down and Up while the focused pickaxe is mid-craft.
+        bool _completedThisHold;
+        bool _holdingForCraft;
 
-        // 단청 톤. DancheongPalette 와 동일 — runtime 의존성 줄이려 const 로 박음.
-        static readonly Color s_equippedColor    = new Color32(0x36, 0x5E, 0x3B, 0xFF); // 단청 녹
-        static readonly Color s_equipReadyColor  = new Color32(0x4A, 0x7A, 0x4E, 0xFF); // 단청 녹 brighter
-        static readonly Color s_craftAffordColor = new Color32(0xC8, 0x44, 0x3A, 0xFF); // 단청 적
-        static readonly Color s_craftDimColor    = new Color32(0x5A, 0x55, 0x50, 0xFF); // 회갈 disabled
+
+        static readonly Color s_equippedColor    = new Color32(0x36, 0x5E, 0x3B, 0xFF);
+        static readonly Color s_equipReadyColor  = new Color32(0x4A, 0x7A, 0x4E, 0xFF);
+        static readonly Color s_craftAffordColor = new Color32(0xC8, 0x44, 0x3A, 0xFF);
+        static readonly Color s_craftDimColor    = new Color32(0x5A, 0x55, 0x50, 0xFF);
         static readonly Color s_flashColor       = new Color(0.95f, 0.30f, 0.30f, 1f);
-        static readonly Color s_betterColor      = new Color32(0x66, 0xCC, 0xAA, 0xFF); // 옥색
-        static readonly Color s_worseColor       = new Color32(0xE0, 0x6A, 0x55, 0xFF); // 주홍 옅음
-        static readonly Color s_neutralColor     = new Color32(0xF5, 0xE6, 0xD3, 0xFF); // 한지 흰
+        static readonly Color s_betterColor      = new Color32(0x66, 0xCC, 0xAA, 0xFF);
+        static readonly Color s_worseColor       = new Color32(0xE0, 0x6A, 0x55, 0xFF);
+        static readonly Color s_neutralColor     = new Color32(0xF5, 0xE6, 0xD3, 0xFF);
 
         public int FocusIdx => _focusIdx;
 
@@ -106,8 +106,8 @@ namespace Rebuild.Mining
             if (actionImage != null) _baseActionColor = actionImage.color;
             if (actionButton != null)
             {
-                // actionButton.onClick is no longer used; hold-to-craft is driven
-                // by PointerHoldForwarder.OnDown/OnUp. Clear any prior listeners defensively.
+
+
                 actionButton.onClick.RemoveAllListeners();
             }
             if (leftArrow != null)
@@ -120,7 +120,7 @@ namespace Rebuild.Mining
                 rightArrow.onClick.RemoveAllListeners();
                 rightArrow.onClick.AddListener(GoNext);
             }
-            // skin selector buttons.
+
             if (skinPrevBtn != null)
             {
                 skinPrevBtn.onClick.RemoveAllListeners();
@@ -137,11 +137,11 @@ namespace Rebuild.Mining
             if (craftingDotsLabel != null) craftingDotsLabel.text = "";
         }
 
-        /// <summary>RingSprite is created with HideFlags.HideAndDontSave so
-        /// it never serialises into the scene, which means after every domain reload the bound
-        /// reference is stale and the Image falls back to a white quad. Re-binding the sprite,
-        /// fill type / method / origin every OnEnable guarantees the gauge always reads as a ring
-        /// fill that radials cleanly from the top.</summary>
+
+
+
+
+
         void EnsureFillCircleState()
         {
             if (craftFillCircle == null) return;
@@ -155,17 +155,17 @@ namespace Rebuild.Mining
             craftFillCircle.preserveAspect = true;
         }
 
-        /// <summary>v2 — the legacy craftingOverlay (full-screen 검정 panel
-        /// with "복원 중..." text) was authored with Image.raycastTarget=true, which would
-        /// intercept the pointer on the same frame it activates and fire actionButton's
-        /// OnPointerExit → CancelCraft. Force the Image to NOT consume the pointer so the
-        /// pointer keeps hitting actionButton beneath the overlay.</summary>
+
+
+
+
+
         void EnsureOverlayState()
         {
             if (craftingOverlay == null) return;
             var img = craftingOverlay.GetComponent<Image>();
             if (img != null) img.raycastTarget = false;
-            // Also walk children — the "복원 중..." TMP shouldn't block pointer either.
+
             var graphics = craftingOverlay.GetComponentsInChildren<Graphic>(includeInactive: true);
             for (int i = 0; i < graphics.Length; i++)
                 if (graphics[i] != null) graphics[i].raycastTarget = false;
@@ -191,7 +191,7 @@ namespace Rebuild.Mining
             {
                 actionHoldForwarder.OnDown = HandleActionDown;
                 actionHoldForwarder.OnUp = HandleActionUp;
-                actionHoldForwarder.OnExit = HandleActionUp; // exit = same as release for cancel
+                actionHoldForwarder.OnExit = HandleActionUp;
             }
 
             EnsureFillCircleState();
@@ -205,7 +205,7 @@ namespace Rebuild.Mining
 
         void OnDisable()
         {
-            // If the panel hides mid-craft, abort cleanly so we don't leak gauge state.
+
             if (AnvilManager.Instance != null && AnvilManager.Instance.IsCraftingAny)
                 AnvilManager.Instance.CancelCraft();
 
@@ -237,7 +237,7 @@ namespace Rebuild.Mining
             if (craftingDotsLabel != null) craftingDotsLabel.text = "";
         }
 
-        // ---- ------------ Public API ------------ ----
+
         public void GoNext()
         {
             CancelHoldIfNeeded();
@@ -261,19 +261,19 @@ namespace Rebuild.Mining
 
         void CancelHoldIfNeeded()
         {
-            // moving focus mid-craft aborts the gauge so the player doesn't pay for
-            // a pickaxe they walked away from. CancelCraft fires OnCraftCancelled which clears the
-            // gauge visual.
+
+
+
             if (AnvilManager.Instance != null && AnvilManager.Instance.IsCraftingAny)
                 AnvilManager.Instance.CancelCraft();
             _holdingForCraft = false;
         }
 
-        // ---- ------------ Event handlers ------------ ----
+
         void HandlePickaxeChanged(int _) => RefreshAll();
         void HandleSkinChanged(int idx, int _)
         {
-            // 현재 focus 의 skin 만 바뀌어도 bigIcon refresh 필요 (다른 idx 면 selector 만 갱신).
+
             if (idx == _focusIdx) { ApplyStaticInfo(); RefreshSkinSelector(); }
         }
 
@@ -281,17 +281,17 @@ namespace Rebuild.Mining
         {
             if (crafted && idx == _focusIdx)
             {
-                // the craft finished while the user was still holding. Mark the
-                // hold as "completed" so the next OnPointerUp doesn't attempt a (now-irrelevant)
-                // cancel. The gauge briefly stays full before the next RefreshAll clears it.
+
+
+
                 _completedThisHold = true;
                 _holdingForCraft = false;
                 if (craftFillCircle != null) craftFillCircle.fillAmount = 0f;
                 if (craftingDotsLabel != null) craftingDotsLabel.text = "";
             }
-            // celebration popup on every successful craft (focus-agnostic, matching
-            // original TheAnvil behavior). Fires once per craft completion. If the clip is wired
-            // FinishedCrafting also rings out under the visual (best-effort; silent if missing).
+
+
+
             if (crafted && popupParent != null && gameObject.activeInHierarchy)
             {
                 var sprite = SpriteLibrary.GetPickaxeSprite(idx);
@@ -318,16 +318,16 @@ namespace Rebuild.Mining
         void HandleCraftingStarted(int started)
         {
             if (started != _focusIdx) return;
-            // 🚨 v2 — overlay IS re-activated, but with raycastTarget=false
-            // (EnsureOverlayState) so the pointer keeps hitting actionButton beneath. The big
-            // "복원 중..." text in the overlay matches the original UX where craftingFrame
-            // pops up during the hold. Originally we disabled it; user reported the missing
-            // visual.
-            //
-            // Also do NOT disable actionButton via Button.interactable=false — flipping to
-            // disabledColor is a distracting flash and risks suppressing IPointerExit/Up
-            // delivery on some EventSystem paths. PointerHoldForwarder receives the events
-            // regardless via the IPointer*Handler interfaces.
+
+
+
+
+
+
+
+
+
+
             if (craftingOverlay != null) craftingOverlay.SetActive(true);
             if (craftFillCircle != null) craftFillCircle.fillAmount = 0f;
             if (craftingDotsLabel != null) craftingDotsLabel.text = "복원 중";
@@ -354,9 +354,9 @@ namespace Rebuild.Mining
             if (craftFillCircle != null) craftFillCircle.fillAmount = t01;
             if (craftingDotsLabel != null)
             {
-                // original TheAnvil ticks dotCount every 0.35s (TheAnvil.cs:1830).
-                // Convert t01 back to elapsed seconds: t01 × CraftDurationSec. Bucketing into
-                // 0.35s slots gives the same cadence regardless of frame rate.
+
+
+
                 float total = AnvilManager.CraftDurationSec;
                 float elapsed = t01 * total;
                 int dots = Mathf.FloorToInt(elapsed / 0.35f) % 4;
@@ -367,7 +367,7 @@ namespace Rebuild.Mining
         void HandleCraftCancelled(int idx)
         {
             if (idx != _focusIdx) return;
-            // Silent reset — no RedFlash because the user actively released; this isn't an error.
+
             _holdingForCraft = false;
             if (craftingOverlay != null) craftingOverlay.SetActive(false);
             if (craftFillCircle != null) craftFillCircle.fillAmount = 0f;
@@ -375,21 +375,21 @@ namespace Rebuild.Mining
             RefreshActionState();
         }
 
-        // ---- ------------ Hold-to-craft action button ------------ ----
+
         void HandleActionDown()
         {
             if (AnvilManager.Instance == null) return;
             var anvil = AnvilManager.Instance;
 
-            // Already crafted → single-press Equip, no hold needed.
+
             if (anvil.IsCrafted(_focusIdx))
             {
                 anvil.Equip(_focusIdx);
                 return;
             }
 
-            // Not crafted → check affordability up front so a hold that can't ever succeed
-            // surfaces the CantAfford SFX + red flash immediately (BeginCraft does this for us).
+
+
             _completedThisHold = false;
             _holdingForCraft = true;
             anvil.BeginCraft(_focusIdx);
@@ -397,9 +397,9 @@ namespace Rebuild.Mining
 
         void HandleActionUp()
         {
-            // Suppress cancel when the gauge just completed — the up-event would otherwise abort
-            // a craft that already succeeded (the cancel would no-op anyway since IsCraftingAny
-            // is false, but we still clear the hold flag).
+
+
+
             if (_completedThisHold)
             {
                 _completedThisHold = false;
@@ -412,7 +412,7 @@ namespace Rebuild.Mining
                 AnvilManager.Instance.CancelCraft();
         }
 
-        // ---- ------------ Refresh ------------ ----
+
         void RefreshAll()
         {
             ApplyStaticInfo();
@@ -424,13 +424,13 @@ namespace Rebuild.Mining
             RefreshSkinSelector();
         }
 
-        /// <summary>focus 된 pickaxe 의 skin 0/1/2 표시 + idx 13 (마지막) 면 selector 자체 hide.</summary>
+
         void RefreshSkinSelector()
         {
             var anvil = AnvilManager.Instance;
             bool hasVariants = anvil != null && anvil.HasSkinVariants(_focusIdx);
             bool unlocked = anvil != null && anvil.IsCrafted(_focusIdx);
-            // 변형 없거나 아직 미해금이면 selector 숨김 — 잠긴 곡괭이에 skin 선택 노출 X.
+
             bool visible = hasVariants && unlocked;
             if (skinSelectorRoot != null) skinSelectorRoot.SetActive(visible);
             if (!visible) return;
@@ -441,21 +441,21 @@ namespace Rebuild.Mining
             }
         }
 
-        /// <summary>prev/next 버튼 핸들러. AnvilManager.CycleSkin 호출 후 selector + bigIcon refresh.</summary>
+
         void CycleSkinAtFocus(int dir)
         {
             var anvil = AnvilManager.Instance;
             if (anvil == null) return;
             if (!anvil.HasSkinVariants(_focusIdx)) return;
-            if (!anvil.IsCrafted(_focusIdx)) return; // 미해금 곡괭이 skin 변경 차단
+            if (!anvil.IsCrafted(_focusIdx)) return;
             anvil.CycleSkin(_focusIdx, dir);
-            // OnSkinChanged 이벤트로 자동 RefreshAll 호출되지만, immediate UI feedback 위해 명시 호출.
+
             ApplyStaticInfo();
             RefreshSkinSelector();
         }
 
-        /// <summary>show the currently equipped pickaxe in a small thumbnail card
-        /// regardless of which one is in the spotlight focus.</summary>
+
+
         void RefreshEquippedSidecar()
         {
             if (AnvilManager.Instance == null) return;
@@ -466,7 +466,7 @@ namespace Rebuild.Mining
 
             if (equippedIcon != null)
             {
-                // equipped 의 skin variant 도 sidecar 에 반영.
+
                 int eqSkin = AnvilManager.Instance.GetSkinChosen(eqIdx);
                 var custom = SpriteLibrary.GetPickaxeSprite(eqIdx, eqSkin);
                 bool hasCustom = custom != null && custom != RockSpriteFactory.GetRockSprite();
@@ -489,23 +489,23 @@ namespace Rebuild.Mining
         void ApplyStaticInfo()
         {
             var info = PickaxeDef.Get(_focusIdx);
-            // lock the name + sprite of an un-crafted pickaxe so the player has to
-            // earn the reveal. Mirrors original TheAnvil's color=Color.black silhouette pre-craft.
+
+
             bool unlocked = AnvilManager.Instance != null && AnvilManager.Instance.IsCrafted(_focusIdx);
 
             if (nameLabel != null) nameLabel.text = unlocked ? info.Name : "??????";
 
             if (bigIcon != null)
             {
-                // equipped 한 skin variant 반영. GetSkinChosen 은 idx 13 도 안전 (0 반환).
+
                 int skin = AnvilManager.Instance != null ? AnvilManager.Instance.GetSkinChosen(_focusIdx) : 0;
                 var custom = SpriteLibrary.GetPickaxeSprite(_focusIdx, skin);
                 bool hasCustom = custom != null && custom != RockSpriteFactory.GetRockSprite();
                 bigIcon.sprite = custom;
                 if (!unlocked)
                 {
-                    // Silhouette — dark tint matches the original black mask, alpha kept so the
-                    // outline is still visible against the carousel background.
+
+
                     bigIcon.color = new Color(0.08f, 0.08f, 0.10f, 0.92f);
                 }
                 else if (hasCustom)
@@ -514,7 +514,7 @@ namespace Rebuild.Mining
                 }
                 else
                 {
-                    // placeholder gradient — gray→gold by idx.
+
                     float t = _focusIdx / Mathf.Max(1f, (float)(PickaxeDef.Count - 1));
                     bigIcon.color = Color.Lerp(new Color(0.55f, 0.50f, 0.45f, 1f),
                                                 new Color(1.00f, 0.84f, 0.18f, 1f), t);
@@ -527,8 +527,8 @@ namespace Rebuild.Mining
         void RefreshStats()
         {
             var info = PickaxeDef.Get(_focusIdx);
-            // masked stats for un-crafted pickaxes. The cost rows still render so
-            // the player knows what's needed to unlock.
+
+
             bool unlocked = AnvilManager.Instance != null && AnvilManager.Instance.IsCrafted(_focusIdx);
             if (!unlocked)
             {
@@ -544,8 +544,8 @@ namespace Rebuild.Mining
             }
 
             if (mineTimeValue != null) mineTimeValue.text = $"{info.MineTime:0.00}s";
-            // every pickaxe has positive minePower in the original (Pickaxe 1 = +2.5),
-            // so the legacy "기본" branch is unreachable. Format with one decimal place for fractional values.
+
+
             if (minePowerValue != null) minePowerValue.text = $"+{info.DamageBonus:0.0}";
             if (doubleChanceValue != null) doubleChanceValue.text = $"{info.DoublePowerChance * 100f:0.0}%";
             if (areaSizeValue != null) areaSizeValue.text = $"{info.MiningAreaSize:0.00}";
@@ -560,9 +560,9 @@ namespace Rebuild.Mining
             SetDeltaLabel(areaSizeDelta, info.MiningAreaSize, equipped.MiningAreaSize, same, lowerIsBetter: false, format: "0.00");
         }
 
-        /// <summary>placeholder delta label for un-crafted pickaxes. Keep the slot
-        /// visible (no SetActive false) to avoid layout shift when the user crafts the pickaxe
-        /// and the real delta replaces it.</summary>
+
+
+
         static void SetMaskedDelta(TMP_Text label)
         {
             if (label == null) return;
@@ -584,7 +584,7 @@ namespace Rebuild.Mining
             const float kEps = 0.0001f;
             bool better = lowerIsBetter ? (delta < -kEps) : (delta > kEps);
             bool worse = lowerIsBetter ? (delta > kEps) : (delta < -kEps);
-            string arrow = better ? "▴" : (worse ? "▾" : "—");
+            string arrow = better ? "▴" : (worse ? "▾" : "");
             string sign = delta > kEps ? "+" : (delta < -kEps ? "-" : "");
             float absDelta = Mathf.Abs(delta);
             label.text = $"{arrow} {sign}{absDelta.ToString(format)}{suffix}";
@@ -638,10 +638,10 @@ namespace Rebuild.Mining
                 if (row.amountLabel != null)
                 {
                     int discounted = AnvilManager.DiscountedCost(cost.Amounts[i]);
-                    // 통일된 FormatNumbers 포맷 (100k 이상 축약).
+
                     row.amountLabel.text = Rebuild.Util.FormatNumbers.Format(discounted);
 
-                    // Highlight unaffordable rows.
+
                     var ore = cost.Currencies[i];
                     long have = GoldAndOreMechanics.Instance != null ? GoldAndOreMechanics.Instance.GetCount(ore) : 0;
                     row.amountLabel.color = have >= discounted ? s_neutralColor : s_worseColor;
@@ -649,7 +649,7 @@ namespace Rebuild.Mining
             }
         }
 
-        // 자체 FormatCostAmount 제거, Rebuild.Util.FormatNumbers.Format 으로 통일.
+
 
         void RefreshActionState()
         {
@@ -680,9 +680,9 @@ namespace Rebuild.Mining
             }
             if (actionButton != null)
             {
-                // keep interactable true during hold so PointerHoldForwarder
-                // continues to receive OnPointerUp/Exit. BeginCraft self-rejects re-entry via
-                // IsCraftingAny so spamming the button mid-hold is harmless.
+
+
+
                 actionButton.interactable = !equipped && (crafted || canAfford);
             }
         }
@@ -713,7 +713,7 @@ namespace Rebuild.Mining
             Color baseColor = spotlightRay.color;
             while (true)
             {
-                float k = Mathf.Sin(Time.unscaledTime * 1.6f) * 0.5f + 0.5f; // 0..1
+                float k = Mathf.Sin(Time.unscaledTime * 1.6f) * 0.5f + 0.5f;
                 float alpha = Mathf.Lerp(0.30f, 0.55f, k);
                 spotlightRay.color = new Color(baseColor.r, baseColor.g, baseColor.b, alpha);
                 yield return null;

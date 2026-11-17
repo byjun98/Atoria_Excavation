@@ -1,12 +1,12 @@
 namespace Rebuild.Mining
 {
-    /// <summary>14 full pickaxe roster.
-    /// Idx 0..4 use Gold/Copper/Iron only; idx 5..13 unlock the rarer ores
-    /// (Cobalt / Uranium / Ismium / Iridium / Painite) via TheMine idle yields and
-    /// SkillTree rolls. Each pickaxe contributes a flat <see cref="Info.DamageBonus"/>
-    /// on click and sets the hover-channel <see cref="Info.MineTime"/> cadence.
-    /// Cost values mirror the restored anvil balance table.
-    /// </summary>
+
+
+
+
+
+
+
     public static class PickaxeDef
     {
         public const int Count = 14;
@@ -23,15 +23,15 @@ namespace Rebuild.Mining
         {
             public readonly int Idx;
             public readonly string Name;
-            /// <summary>채굴 위력 (Mine Power). 한 번 클릭 시 flat +N.N 데미지. 원본 TheAnvil 의
-            /// minePower 값과 정확 매칭 — Pickaxe 1 = +2.5, Pickaxe 14 = +8.0 ().</summary>
+
+
             public readonly float DamageBonus;
-            /// <summary>채굴 시간 (Mine Time, 초). hover 채굴 cadence — 낮을수록 빠름. 원본
-            /// TheAnvil mineTime: Pickaxe 1 = 0.34s, Pickaxe 14 = 0.20s ().</summary>
+
+
             public readonly float MineTime;
-            /// <summary>위력 2배 발동 확률 (0..1). 1.1%~6.5%.</summary>
+
             public readonly float DoublePowerChance;
-            /// <summary>발굴 영역 크기 (splash 반경 multiplier). 인접 발굴지 추가 데미지 (1 미만 = no splash).</summary>
+
             public readonly float MiningAreaSize;
             public readonly Cost Cost;
             public Info(int idx, string name, float dmg, float mineTime, float doublePowerChance, float miningAreaSize, Cost cost)
@@ -39,9 +39,9 @@ namespace Rebuild.Mining
               DoublePowerChance = doublePowerChance; MiningAreaSize = miningAreaSize; Cost = cost; }
         }
 
-        // 14 행 stats 원본 TheAnvil.cs:1312~1367 표 정확 매칭.
-        // mineTime / minePower / 2XChance / areaSize 모두 원본 그대로.
-        // Cost arrays stay separate from the stat table so economy tuning remains local.
+
+
+
         static readonly Info[] s_infos =
         {
             new Info(0,  "돌날 곡괭이",       2.5f, 0.34f,  0.011f, 1.21f, new Cost(new OreType[0], new int[0])),

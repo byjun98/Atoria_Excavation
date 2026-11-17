@@ -6,11 +6,11 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>left sidebar showing 8 ore bar (주괴) counts for the MainMenu tabs.
-    /// Active across all 5 tabs (child of MainMenu, deactivates with it during Mining Session
-    /// where Canvas_UI_MiningScene's MaterialFrame_topLeft takes over).
-    /// Subscribes to GoldAndOreMechanics.OnOreChanged and updates the matching row.
-    /// paradigm: GoldAndOreMechanics._oreCounts is 주괴 (bars) currency.</summary>
+
+
+
+
+
     public sealed class ResourcePanelUI : MonoBehaviour
     {
         [Serializable]
@@ -20,12 +20,29 @@ namespace Rebuild.Mining
             public TMP_Text countLabel;
         }
 
-        /// <summary>MineOrePopupFx queries this for the fly-to RectTransform.</summary>
+
         public static ResourcePanelUI Instance { get; private set; }
 
         [SerializeField] Row[] rows = new Row[8];
+        [SerializeField] RectTransform tooltip;
+        [SerializeField] TMP_Text tooltipName;
+        [SerializeField] TMP_Text tooltipDescription;
+        [SerializeField] TMP_Text tooltipCount;
+
+        static readonly string[] Descriptions =
+        {
+            "초반 스킬을 구매하고 곡괭이를 복원할 때 쓰입니다.",
+            "발굴한 토기 파편을 정산해 얻습니다. 스킬 구매와 곡괭이 복원에 쓰입니다.",
+            "발굴한 청동조각을 정산해 얻습니다. 청동조각이 필요한 스킬과 곡괭이에 쓰입니다.",
+            "발굴한 철편을 정산해 얻습니다. 철편이 필요한 강화에 쓰입니다.",
+            "발굴한 옥조각을 정산해 얻습니다. 옥조각이 필요한 스킬을 구매할 때 쓰입니다.",
+            "발굴한 유리구슬을 정산해 얻습니다. 유리구슬이 필요한 강화에 쓰입니다.",
+            "발굴한 금조각을 정산해 얻습니다. 금조각이 필요한 강화에 쓰입니다.",
+            "발굴한 사리를 정산해 얻습니다. 사리가 필요한 강화에 쓰입니다."
+        };
 
         bool _subscribed;
+        int _hoveredRow = -1;
         Coroutine[] _pulseRoutines;
         Vector3[] _pulseBaseScales;
 
@@ -58,6 +75,7 @@ namespace Rebuild.Mining
 
         void OnDisable()
         {
+            HideResourceTooltip(_hoveredRow);
             if (_subscribed && GoldAndOreMechanics.Instance != null)
             {
                 GoldAndOreMechanics.Instance.OnOreChanged -= HandleChanged;
@@ -65,10 +83,42 @@ namespace Rebuild.Mining
             }
         }
 
-        /// <summary>returns the icon RectTransform for <paramref name="ore"/>, or
-        /// null if the row wasn't wired. MineOrePopupFx converts this through
-        /// <c>RectTransformUtility.WorldToScreenPoint</c> + ScreenPointToLocalPointInRectangle
-        /// when computing its fly-to anchored pos.</summary>
+        public void ConfigureTooltip(RectTransform panel, TMP_Text title, TMP_Text description, TMP_Text amount)
+        {
+            tooltip = panel;
+            tooltipName = title;
+            tooltipDescription = description;
+            tooltipCount = amount;
+        }
+
+        internal void ShowResourceTooltip(int index, RectTransform row)
+        {
+            if (tooltip == null || index < 0 || index >= Descriptions.Length) return;
+            _hoveredRow = index;
+            var ore = (OreType)index;
+            tooltipName.text = OreLocalization.OreNameKr(ore);
+            tooltipDescription.text = Descriptions[index];
+            SetTooltipCount(GoldAndOreMechanics.Instance != null ? GoldAndOreMechanics.Instance.GetCount(ore) : 0);
+            tooltip.position = row.TransformPoint(new Vector3(row.rect.xMax + 16f, row.rect.center.y, 0f));
+            tooltip.gameObject.SetActive(true);
+        }
+
+        internal void HideResourceTooltip(int index)
+        {
+            if (_hoveredRow != index) return;
+            _hoveredRow = -1;
+            if (tooltip != null) tooltip.gameObject.SetActive(false);
+        }
+
+        void SetTooltipCount(long count)
+        {
+            tooltipCount.text = $"보유 {count:N0}개";
+        }
+
+
+
+
+
         public RectTransform GetRowIconRT(OreType ore)
         {
             int idx = (int)ore;
@@ -78,8 +128,8 @@ namespace Rebuild.Mining
             return row.icon.rectTransform;
         }
 
-        /// <summary>short 1.25× scale punch on the row icon. Called by MineOrePopupFx
-        /// at the arrival of an ore tick so the row visibly "catches" the credited bar.</summary>
+
+
         public void PulseRow(OreType ore)
         {
             int idx = (int)ore;
@@ -136,8 +186,9 @@ namespace Rebuild.Mining
         {
             var row = rows[idx];
             if (row == null) return;
-            // 통일된 K/M/B/T 포맷 (100k 미만은 thousand separator).
+
             if (row.countLabel != null) row.countLabel.text = Rebuild.Util.FormatNumbers.Format(count);
+            if (idx == _hoveredRow) SetTooltipCount(count);
             EnsureIconSprite(idx);
         }
 
@@ -155,7 +206,7 @@ namespace Rebuild.Mining
             }
             else
             {
-                if (row.icon.sprite != null) return; // keep any scene-wired fallback if bar art is absent
+                if (row.icon.sprite != null) return;
                 var hud = SpriteLibrary.GetOreHudIcon(ore);
                 if (hud != null)
                 {
@@ -172,6 +223,6 @@ namespace Rebuild.Mining
             }
         }
 
-        // 자체 FormatCount 제거, Rebuild.Util.FormatNumbers.Format 으로 통일.
+
     }
 }

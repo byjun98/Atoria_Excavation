@@ -4,13 +4,13 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>when an artifact is discovered while a rock breaks,
-    /// spawn a quick visual flourish at the rock's position: pulsing scale + outward fly toward
-    /// the ArtifactFoundPopupUI center. Mirrors original <c>ArtifactIconsMechanics.MoveArtifact</c>
-    /// without the pre-roll "stuck on a specific rock" UX (kept simple — per-destroy roll model
-    /// from is preserved).
-    /// <para>Pattern: PickaxeSwingFx / OreDropPopupFx — static Spawn → coroutine → self-destroy.</para>
-    /// </summary>
+
+
+
+
+
+
+
     public sealed class ArtifactRockOverlayUI : MonoBehaviour
     {
         const float PulseDuration = 0.5f;
@@ -25,8 +25,8 @@ namespace Rebuild.Mining
         Coroutine _running;
         bool _initialized;
 
-        /// <summary>Spawn the overlay at the rock's position, flying toward the popup center.
-        /// <paramref name="parent"/> = rock's parent TileRow (so the FX survives Rock.FadeAndDestroy).</summary>
+
+
         public static ArtifactRockOverlayUI Spawn(Transform parent, Vector2 anchoredPos,
                                                     Vector2 targetAnchored, ArtifactId id)
         {
@@ -85,7 +85,7 @@ namespace Rebuild.Mining
 
         IEnumerator Lifecycle()
         {
-            // Punch pulse at rock position: scale 0 → 1.2 (Sin ease) → 1.0, alpha 0.8.
+
             float t = 0f;
             while (t < PulseDuration)
             {
@@ -101,8 +101,8 @@ namespace Rebuild.Mining
                 yield return null;
             }
 
-            // Fly to popup center with shrink (SmoothStep). Same "absorbed into UI"
-            // ending as the ore drop popup so the cue feels familiar.
+
+
             t = 0f;
             while (t < MoveDuration)
             {

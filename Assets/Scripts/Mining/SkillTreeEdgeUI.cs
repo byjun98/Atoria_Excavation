@@ -4,56 +4,36 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>thin Image bar connecting two <see cref="TreeNodeUI"/> rects.
-    /// Lives as a child under the same parent as the nodes so anchored positions align.
-    /// Tint indicates whether the upstream prerequisite (parent node) is unlocked.
-    /// <para>edge now subscribes to <see cref="SkillTreeManager.OnUpgradeChanged"/>
-    /// itself and refreshes its tint whenever the cached parent levels up. Setup wires the
-    /// parent id through <see cref="SetParentId"/>.</para>
-    /// </summary>
+
     [RequireComponent(typeof(Image))]
     public sealed class SkillTreeEdgeUI : MonoBehaviour
     {
-        const float Thickness = 6f;
-
+        const float Thickness = 3f;
         Image _image;
+        Image _segment;
         RectTransform _rect;
-        readonly Image[] _segments = new Image[2];
-        readonly bool[] _segmentUsed = new bool[2];
+        bool _hasGeometry;
+        bool _highlighted;
 
-        // cached parent id for live-tint updates.
         [SerializeField] UpgradeId _parentId;
         [SerializeField] bool _hasParent;
-
-        // cache the endpoint rects so OnEnable can recompute the bar's
-        // anchoredPosition/sizeDelta/rotation after a domain reload. Without this, a NaN
-        // RectTransform sweep would leave the edge geometry stuck at whatever stale value
-        // was on disk (often (0,0) which then propagates as Invalid AABB / IsFinite asserts).
         [SerializeField] RectTransform _fromRect;
         [SerializeField] RectTransform _toRect;
 
         void Awake()
         {
-            _image = GetComponent<Image>();
-            _rect = (RectTransform)transform;
-            // Pin anchors so anchoredPosition acts as a parent-centered offset — the layout
-            // script positions nodes in the same anchor space, so endpoints line up.
-            _rect.anchorMin = new Vector2(0.5f, 0.5f);
-            _rect.anchorMax = new Vector2(0.5f, 0.5f);
+            EnsureRefs();
+            _rect.anchorMin = _rect.anchorMax = new Vector2(0.5f, 0.5f);
             _rect.pivot = new Vector2(0.5f, 0.5f);
-            if (_image != null) _image.raycastTarget = false;
+            _image.raycastTarget = false;
         }
 
         void OnEnable()
         {
             if (SkillTreeManager.Instance != null)
                 SkillTreeManager.Instance.OnUpgradeChanged += HandleUpgradeChanged;
-
-            // recompute geometry from current node positions on every
-            // enable (covers domain reloads where a NaN sweep zeroed the cached layout).
-            if (_fromRect != null && _toRect != null)
-                SetEndpoints(_fromRect, _toRect);
-
+            TreeNodeUI.HoveredNodeChanged += HandleHoveredNode;
+            if (_fromRect != null && _toRect != null) SetEndpoints(_fromRect, _toRect);
             ResolveParentFromEndpoint();
             RefreshFromCurrentState();
         }
@@ -62,63 +42,73 @@ namespace Rebuild.Mining
         {
             if (SkillTreeManager.Instance != null)
                 SkillTreeManager.Instance.OnUpgradeChanged -= HandleUpgradeChanged;
+            TreeNodeUI.HoveredNodeChanged -= HandleHoveredNode;
+            _highlighted = false;
         }
 
-        /// <summary>Position this rect as a rotated bar spanning <paramref name="from"/> to <paramref name="to"/>.
-        /// Assumes both endpoints share this transform's parent so anchored positions are comparable.
-        /// <para>caches the endpoints + guards against NaN/Infinity inputs so a
-        /// corrupted RectTransform on the source nodes can't poison this edge's geometry.</para></summary>
         public void SetEndpoints(RectTransform from, RectTransform to)
         {
             if (from == null || to == null) return;
             EnsureRefs();
-
-            // Cache for OnEnable recompute after domain reload.
             _fromRect = from;
             _toRect = to;
-
-            Vector2 a = from.anchoredPosition;
-            Vector2 b = to.anchoredPosition;
-
-            // NaN/Infinity guard — a single bad endpoint would otherwise cascade through
-            // magnitude/atan2 and write NaN into our own RectTransform (triggering Invalid
-            // AABB / IsFinite asserts on the Canvas).
-            if (HasBadFloat(a.x) || HasBadFloat(a.y) || HasBadFloat(b.x) || HasBadFloat(b.y))
-            {
-                _rect.anchoredPosition = Vector2.zero;
-                _rect.sizeDelta = new Vector2(0f, Thickness);
-                _rect.localRotation = Quaternion.identity;
-                SetSegmentVisible(0, false);
-                SetSegmentVisible(1, false);
-                return;
-            }
-
+            _rect.anchorMin = _rect.anchorMax = new Vector2(0.5f, 0.5f);
+            _rect.pivot = new Vector2(0.5f, 0.5f);
             _rect.anchoredPosition = Vector2.zero;
             _rect.sizeDelta = Vector2.zero;
             _rect.localRotation = Quaternion.identity;
-            if (_image != null) _image.enabled = false;
+            _image.enabled = false;
 
-            bool sameColumn = Mathf.Abs(a.x - b.x) < 0.5f;
-            bool sameRow = Mathf.Abs(a.y - b.y) < 0.5f;
-            if (sameColumn || sameRow)
+            Vector2 a = _rect.InverseTransformPoint(from.TransformPoint(from.rect.center));
+            Vector2 b = _rect.InverseTransformPoint(to.TransformPoint(to.rect.center));
+            Vector2 delta = b - a;
+            float distance = delta.magnitude;
+            var segment = GetSegment();
+            var rt = (RectTransform)segment.transform;
+            _hasGeometry = IsFinite(a) && IsFinite(b) && distance > 0.5f;
+            if (_hasGeometry)
             {
-                SetSegment(0, a, b);
-                SetSegmentVisible(1, false);
+                Vector2 direction = delta / distance;
+                float fromRadius = VisualRadius(from);
+                float toRadius = VisualRadius(to);
+                Vector2 start = a + direction * fromRadius;
+                Vector2 end = b - direction * toRadius;
+                float length = Mathf.Max(0f, distance - fromRadius - toRadius);
+                _hasGeometry = length > 0.5f;
+                rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.anchoredPosition = (start + end) * 0.5f;
+                rt.sizeDelta = new Vector2(length, Thickness);
+                rt.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
             }
             else
             {
-                Vector2 corner = new Vector2(b.x, a.y);
-                SetSegment(0, a, corner);
-                SetSegment(1, corner, b);
+                rt.anchoredPosition = Vector2.zero;
+                rt.sizeDelta = new Vector2(0f, Thickness);
+                rt.localRotation = Quaternion.identity;
             }
 
+
+            var oldElbow = transform.Find("Segment_1");
+            if (oldElbow != null && oldElbow.TryGetComponent<Image>(out var oldImage))
+                oldImage.enabled = false;
             ResolveParentFromEndpoint();
+            RefreshFromCurrentState();
         }
 
-        static bool HasBadFloat(float f) => float.IsNaN(f) || float.IsInfinity(f);
+        float VisualRadius(RectTransform endpoint)
+        {
+            var node = endpoint.GetComponent<TreeNodeUI>();
+            RectTransform visual = node != null ? node.VisualRect : endpoint;
+            Vector3 horizontal = _rect.InverseTransformVector(visual.TransformVector(Vector3.right * visual.rect.width));
+            Vector3 vertical = _rect.InverseTransformVector(visual.TransformVector(Vector3.up * visual.rect.height));
+            return Mathf.Min(horizontal.magnitude, vertical.magnitude) * 0.5f;
+        }
 
-        /// <summary>cache the parent upgrade so this edge can self-refresh
-        /// when its prereq is met. Setup script calls this after <see cref="SetEndpoints"/>.</summary>
+        static bool IsFinite(Vector2 value) =>
+            !float.IsNaN(value.x) && !float.IsInfinity(value.x)
+            && !float.IsNaN(value.y) && !float.IsInfinity(value.y);
+
         public void SetParentId(UpgradeId parentId)
         {
             _parentId = parentId;
@@ -128,104 +118,73 @@ namespace Rebuild.Mining
 
         void ResolveParentFromEndpoint()
         {
-            if (_hasParent) return;
-            if (_fromRect == null) return;
+            if (_hasParent || _fromRect == null) return;
             var node = _fromRect.GetComponent<TreeNodeUI>();
             if (node == null) return;
             _parentId = node.Id;
             _hasParent = true;
         }
 
-        /// <summary>Recolor based on whether the upstream prerequisite is unlocked.</summary>
         public void RefreshTint(bool unlocked)
         {
-            EnsureRefs();
-            Color c = unlocked ? DancheongPalette.TitleGold : DancheongPalette.Disabled;
-            c.a = unlocked ? 0.85f : 0.55f;
-            if (_image != null) _image.color = c;
-            for (int i = 0; i < _segments.Length; i++)
-                if (_segments[i] != null) _segments[i].color = c;
+            var segment = GetSegment();
+            var manager = SkillTreeManager.Instance;
+            var child = _toRect != null ? _toRect.GetComponent<TreeNodeUI>() : null;
+            bool owned = child != null && manager != null && manager.GetLevel(child.Id) > 0;
+            bool complete = child != null && manager != null && manager.IsMaxed(child.Id);
+            Color tint = complete ? MuseumUiTheme.Gold : owned ? MuseumUiTheme.Jade : MuseumUiTheme.Locked;
+            tint.a = _highlighted ? 1f : complete ? 0.8f : owned ? 0.62f : 0.55f;
+            if (_highlighted && !complete) tint = MuseumUiTheme.Jade;
+            segment.color = tint;
+            segment.enabled = _hasGeometry && (manager == null || unlocked || owned);
+            var size = segment.rectTransform.sizeDelta;
+            size.y = _highlighted ? Thickness + 1f : Thickness;
+            segment.rectTransform.sizeDelta = size;
         }
 
         void HandleUpgradeChanged(UpgradeId changed, int level)
         {
-            if (_hasParent && changed == _parentId) RefreshFromCurrentState();
+            var child = _toRect != null ? _toRect.GetComponent<TreeNodeUI>() : null;
+            if ((_hasParent && changed == _parentId) || (child != null && changed == child.Id))
+                RefreshFromCurrentState();
+        }
+
+        void HandleHoveredNode(UpgradeId? hovered)
+        {
+            _highlighted = false;
+            var child = _toRect != null ? _toRect.GetComponent<TreeNodeUI>() : null;
+            if (child != null)
+            {
+
+                for (int i = 0; hovered.HasValue && i < SkillTreeLayout.Nodes.Length; i++)
+                {
+                    if (hovered.Value == child.Id) { _highlighted = true; break; }
+                    hovered = SkillTreeLayout.GetParent(hovered.Value);
+                }
+            }
+            RefreshFromCurrentState();
         }
 
         void RefreshFromCurrentState()
         {
-            if (!_hasParent) { ApplyVisibility(false); return; }
-            bool unlocked = SkillTreeManager.Instance != null
-                            && SkillTreeManager.Instance.GetLevel(_parentId) > 0;
-            // progressive hide. 부모 미해금 시 edge 자체도 숨김 (TreeNodeUI 가 자식
-            // 노드를 SetActive(false) 하므로 edge 만 보이면 화살표 끝이 허공으로 향함).
-            ApplyVisibility(unlocked);
-            if (!unlocked) return;
+            bool unlocked = _hasParent && SkillTreeManager.Instance != null
+                && SkillTreeManager.Instance.GetLevel(_parentId) > 0;
             RefreshTint(unlocked);
         }
 
-        void ApplyVisibility(bool visible)
+        Image GetSegment()
         {
-            EnsureRefs();
-            if (_image != null) _image.enabled = false;
-            for (int i = 0; i < _segments.Length; i++)
-                if (_segments[i] != null) _segments[i].enabled = visible && _segmentUsed[i];
-        }
-
-        void SetSegment(int index, Vector2 start, Vector2 end)
-        {
-            var img = GetSegment(index);
-            var rt = (RectTransform)img.transform;
-            Vector2 delta = end - start;
-            float dist = delta.magnitude;
-            if (dist < 0.5f)
-            {
-                img.enabled = false;
-                _segmentUsed[index] = false;
-                return;
-            }
-
-            rt.anchorMin = new Vector2(0.5f, 0.5f);
-            rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = (start + end) * 0.5f;
-            rt.sizeDelta = new Vector2(dist, Thickness);
-            rt.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
-            _segmentUsed[index] = true;
-            img.enabled = true;
-        }
-
-        void SetSegmentVisible(int index, bool visible)
-        {
-            var img = GetSegment(index);
-            _segmentUsed[index] = visible;
-            img.enabled = visible;
-        }
-
-        Image GetSegment(int index)
-        {
-            if (_segments[index] != null) return _segments[index];
-
-            var child = transform.Find($"Segment_{index}");
+            if (_segment != null) return _segment;
+            var child = transform.Find("Segment_0");
             if (child == null)
             {
-                var go = new GameObject($"Segment_{index}",
-                    typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                var go = new GameObject("Segment_0", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
                 go.transform.SetParent(transform, false);
                 child = go.transform;
             }
-
-            var img = child.GetComponent<Image>();
-            if (_image != null)
-            {
-                img.sprite = _image.sprite;
-                img.type = _image.type;
-                img.pixelsPerUnitMultiplier = _image.pixelsPerUnitMultiplier;
-                img.color = _image.color;
-            }
-            img.raycastTarget = false;
-            _segments[index] = img;
-            return img;
+            _segment = child.GetComponent<Image>();
+            _segment.raycastTarget = false;
+            return _segment;
         }
 
         void EnsureRefs()

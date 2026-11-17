@@ -4,10 +4,10 @@ using UnityEngine;
 
 namespace Rebuild.Mining
 {
-    /// <summary>permanent upgrades.
-    /// Singleton on MiningSessionRoot. Levels are spent ore (cumulative _oreCounts) and
-    /// queried by other managers via <see cref="GetLevel"/>.
-    /// persists <c>_levels</c> via DataPersistenceManager.</summary>
+
+
+
+
     public sealed class SkillTreeManager : MonoBehaviour, Rebuild.Saving.IDataPersistence
     {
         public static SkillTreeManager Instance { get; private set; }
@@ -55,9 +55,9 @@ namespace Rebuild.Mining
         public bool IsMaxed(UpgradeId id) => GetLevel(id) >= GetMaxLevel(id);
         public OreType GetCurrency(UpgradeId id) => UpgradeDef.Get(id).Currency;
 
-        /// <summary>original-style skill-tree prereq gate.
-        /// A node is purchasable only after its <see cref="SkillTreeLayout.GetParent"/> has at
-        /// least one level. Roots (parent == null) are always unlocked.</summary>
+
+
+
         public bool IsPrereqMet(UpgradeId id)
         {
             var parent = SkillTreeLayout.GetParent(id);
@@ -65,8 +65,8 @@ namespace Rebuild.Mining
             return GetLevel(parent.Value) > 0;
         }
 
-        /// <summary>Returns the price for the next purchase, or −1 if maxed.
-        /// SteamSale talent: discounts the displayed and charged price by 7%.</summary>
+
+
         public int GetNextPrice(UpgradeId id)
         {
             var info = UpgradeDef.Get(id);
@@ -75,8 +75,8 @@ namespace Rebuild.Mining
             return DiscountedPrice(info.PerLevelPrices[lv]);
         }
 
-        /// <summary>SteamSale talent: apply x0.93 to a raw price (ceil — min 1).
-        /// Static so UI elements can show the same discounted value the spend uses.</summary>
+
+
         public static int DiscountedPrice(int raw)
         {
             if (LevelMechanics.Instance != null && LevelMechanics.Instance.HasTalent(TalentId.SteamSale))
@@ -86,7 +86,7 @@ namespace Rebuild.Mining
 
         public bool TryPurchase(UpgradeId id)
         {
-            // prereq must be met before any other check fires.
+
             if (!IsPrereqMet(id))
             {
                 Rebuild.Audio.AudioManager.Instance?.Play("CantAfford");
@@ -114,7 +114,7 @@ namespace Rebuild.Mining
             return true;
         }
 
-        /// <summary>Debug hard reset.</summary>
+
         public void ResetAll()
         {
             for (int i = 0; i < _levels.Length; i++)
@@ -124,7 +124,7 @@ namespace Rebuild.Mining
             }
         }
 
-        // ---- IDataPersistence ----
+
         public void LoadData(GameDataDTO data)
         {
             if (data == null) return;

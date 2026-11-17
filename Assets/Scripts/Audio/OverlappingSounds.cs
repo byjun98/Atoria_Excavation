@@ -2,9 +2,9 @@ using UnityEngine;
 
 namespace Rebuild.Audio
 {
-    /// <summary>dedicated <see cref="AudioSource"/> per high-frequency event so a
-    /// pickaxe swing / rock break / ore pop / beam fire doesn't drop the previous one on retrigger.
-    /// Each bucket picks a random clip from its pool + a tiny pitch jitter so repetition stays musical.</summary>
+
+
+
     public sealed class OverlappingSounds : MonoBehaviour
     {
         public static OverlappingSounds Instance { get; private set; }
@@ -44,7 +44,7 @@ namespace Rebuild.Audio
             var clip = clips[Random.Range(0, clips.Length)];
             if (clip == null) return;
             src.pitch = 1f + Random.Range(-pitchJitter, pitchJitter);
-            // scale by the user's SFX volume so the Settings slider affects these too.
+
             float sfxScale = AudioManager.Instance != null ? AudioManager.Instance.SfxVolume : 1f;
             src.PlayOneShot(clip, volume * sfxScale);
         }

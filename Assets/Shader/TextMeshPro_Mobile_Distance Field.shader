@@ -16,7 +16,6 @@ Shader "TextMeshPro/Mobile/Distance Field" {
         _CullMode ("Cull Mode", Float) = 0
         _ColorMask ("Color Mask", Float) = 15
 
-        // Keep TMP fallback material lookup quiet by preserving the standard weight properties.
         _WeightNormal ("Weight Normal", Float) = 0
         _WeightBold ("Weight Bold", Float) = 0.5
     }

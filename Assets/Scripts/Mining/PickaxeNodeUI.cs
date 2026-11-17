@@ -5,19 +5,19 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>one pickaxe card inside the Anvil panel.
-    /// Subscribes to AnvilManager and GoldAndOreMechanics to keep the status button live.</summary>
+
+
     public sealed class PickaxeNodeUI : MonoBehaviour
     {
         [SerializeField] int idx;
         [SerializeField] Image iconImage;
         [SerializeField] TMP_Text nameLabel;
         [SerializeField] TMP_Text damageLabel;
-        [SerializeField] Transform costContainer;  // pre-built cost rows go here (1-2 children)
+        [SerializeField] Transform costContainer;
         [SerializeField] Button actionButton;
         [SerializeField] Image actionImage;
         [SerializeField] TMP_Text actionLabel;
-        [SerializeField] GameObject craftingOverlay; // shows "Crafting..." text while busy
+        [SerializeField] GameObject craftingOverlay;
 
         Color _baseActionColor;
         Coroutine _flashCo;
@@ -80,13 +80,13 @@ namespace Rebuild.Mining
         {
             var info = PickaxeDef.Get(idx);
             if (nameLabel != null) nameLabel.text = info.Name;
-            // Compact "+N dmg" label matches the 14-pickaxe grid card width.
-            // fractional minePower (e.g. Pickaxe 1 = +2.5). Every entry positive, "Base" branch unreachable.
+
+
             if (damageLabel != null) damageLabel.text = $"+{info.DamageBonus:0.0} dmg";
             if (iconImage != null)
             {
-                // user-supplied per-pickaxe PNG via Resources (Pickaxes/Pickaxe_XX).
-                // Falls back to the placeholder: rock sprite with a gray→gold gradient tint.
+
+
                 var custom = SpriteLibrary.GetPickaxeSprite(idx);
                 bool hasCustom = custom != null && custom != RockSpriteFactory.GetRockSprite();
                 iconImage.sprite = custom;

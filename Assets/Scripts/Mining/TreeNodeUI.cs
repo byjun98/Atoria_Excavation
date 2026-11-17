@@ -7,42 +7,51 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>icon-only clickable node for the connected skill tree.
-    /// Re-skin of <see cref="UpgradeNodeUI"/> with no inline name/desc/price labels — those
-    /// surface in <see cref="Rebuild.UI.SkillTreeTooltipUI"/> on hover instead.
-    /// State is mirrored on the frame tint (단청 palette): maxed=금, affordable=녹 hover,
-    /// owned but not affordable=녹 idle, locked=회갈 disabled.</summary>
+
+
+
+
     public sealed class TreeNodeUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
         [SerializeField] UpgradeId id;
         [SerializeField] Image iconImage;
         [SerializeField] Image frameImage;
+        [SerializeField] Image faceImage;
         [SerializeField] TMP_Text levelLabel;
         [SerializeField] Button buyButton;
         [SerializeField] CanvasGroup visibilityGroup;
 
         Color _baseFrameColor;
         Coroutine _flashCo;
-        // click punch animation (scale 0.85 + rotate -14° quick punch then settle).
-        Coroutine _punchCo;
-        Vector3 _baseLocalScale = Vector3.one;
-        Quaternion _baseLocalRotation = Quaternion.identity;
-        bool _baseTransformCached;
+        SkillTreeDragController _dragController;
+        SkillPurchaseFeedback _purchaseFeedback;
+        static TreeNodeUI s_hoveredNode;
+        public static event System.Action<UpgradeId?> HoveredNodeChanged;
 
-        // track parent id locally so the OnUpgradeChanged handler can
-        // refresh state when the PARENT levels up (unlocking this node) without paying for a
-        // dictionary lookup per event. Cached at Init time; SkillTreeLayout is the source of truth.
+
+
+
         UpgradeId _parentId;
         bool _hasParent;
 
-        // Locked 상태 (prereq unmet) tint. Darker than Disabled so the
-        // visual reads as "can't even attempt" vs Disabled's "owned but can't afford right now".
-        static readonly Color s_lockedFrameColor = new Color(0.16f, 0.13f, 0.11f, 1f);
-
         public UpgradeId Id => id;
         public RectTransform Rect => (RectTransform)transform;
+        public RectTransform VisualRect => frameImage != null ? frameImage.rectTransform : Rect;
 
-        /// <summary>Setup-time entry point — partner Editor Setup script assigns the id then calls this.</summary>
+        internal static bool IsDiscovered(UpgradeId upgrade, SkillTreeManager manager)
+        {
+            return manager == null || manager.GetLevel(upgrade) > 0 || manager.IsPrereqMet(upgrade);
+        }
+
+        public void ConfigureAppearance(Image face, Image border)
+        {
+            faceImage = face;
+            frameImage = border;
+            if (buyButton != null) buyButton.transition = Selectable.Transition.None;
+            RefreshState();
+        }
+
+
         public void Init(UpgradeId newId)
         {
             id = newId;
@@ -85,6 +94,10 @@ namespace Rebuild.Mining
 
         void OnDisable()
         {
+            ClearHover();
+            if (_flashCo != null) StopCoroutine(_flashCo);
+            _flashCo = null;
+            if (frameImage != null) frameImage.color = _baseFrameColor;
             if (SkillTreeManager.Instance != null)
             {
                 SkillTreeManager.Instance.OnUpgradeChanged -= HandleUpgradeChanged;
@@ -99,14 +112,14 @@ namespace Rebuild.Mining
             if (iconImage != null)
             {
                 var info = UpgradeDef.Get(id);
-                // prefer the user-authored per-node icon when present
-                // (Sprites/SkillTree/{UpgradeId}.png). Falls back to the rock silhouette tinted
-                // by the upgrade's purchase currency so each node still reads as an ore tier.
+
+
+
                 var userIcon = SpriteLibrary.GetSkillTreeIcon(id);
                 if (userIcon != null)
                 {
                     iconImage.sprite = userIcon;
-                    iconImage.color = Color.white;   // user art carries its own color
+                    iconImage.color = Color.white;
                     iconImage.preserveAspect = true;
                     iconImage.raycastTarget = false;
                     return;
@@ -114,7 +127,7 @@ namespace Rebuild.Mining
                 if (iconImage.sprite == null)
                     iconImage.sprite = RockSpriteFactory.GetRockSprite();
                 var tint = RockSpriteFactory.GetOreColor(info.Currency);
-                // Faint tint so the icon reads as an accent, not a screaming color block.
+
                 tint.a = 0.85f;
                 iconImage.color = tint;
                 iconImage.preserveAspect = true;
@@ -124,8 +137,8 @@ namespace Rebuild.Mining
 
         void HandleUpgradeChanged(UpgradeId changed, int newLevel)
         {
-            // Self changed → refresh level label + state.
-            // Parent changed (first level purchased) → we just got unlocked: refresh.
+
+
             if (changed == id || (_hasParent && changed == _parentId))
                 RefreshState();
         }
@@ -149,7 +162,7 @@ namespace Rebuild.Mining
             if (levelLabel != null)
                 levelLabel.text = lv > 0 ? $"{lv}/{max}" : string.Empty;
 
-            // prereq gate. Locked nodes appear darker and reject clicks.
+
             bool prereqMet = st == null || st.IsPrereqMet(id);
             bool maxed = st != null && st.IsMaxed(id);
             bool canAfford = false;
@@ -159,30 +172,34 @@ namespace Rebuild.Mining
                             >= st.GetNextPrice(id);
             }
 
-            // progressive hide. 부모 미해금 노드는 자체 SetActive(false) 로 완전 숨김
-            // (원본 게임 사진 5: 5 root + 자식 노드 hidden 상태). 부모 해금 → 자식 자동 visible.
-            // root 노드 (parent=null) 는 항상 visible.
-            bool shouldShow = !_hasParent
-                              || (st != null && st.GetLevel(_parentId) > 0);
-            ApplyVisibility(shouldShow);
-            if (!shouldShow) return; // 숨김 상태에선 시각 갱신 불필요.
+            bool discovered = IsDiscovered(id, st);
+            ApplyVisibility(discovered);
+            if (!discovered)
+            {
+                if (s_hoveredNode == this) SkillTreeTooltipUI.Instance?.Hide();
+                ClearHover();
+                return;
+            }
 
             Color frame;
-            if (!prereqMet) frame = s_lockedFrameColor;       // 회갈 보다 어두운 잠금 상태
-            else if (maxed) frame = DancheongPalette.TitleGold;
-            else if (canAfford) frame = DancheongPalette.CardHover;
-            else if (lv > 0) frame = DancheongPalette.CardIdle;
-            else frame = DancheongPalette.Disabled;
+            if (maxed) frame = MuseumUiTheme.Gold;
+            else if (lv == 0 && _hasParent)
+                frame = canAfford ? Color.Lerp(MuseumUiTheme.Locked, MuseumUiTheme.Jade, .45f) : MuseumUiTheme.Locked;
+            else if (canAfford) frame = MuseumUiTheme.Jade;
+            else if (lv > 0) frame = Color.Lerp(MuseumUiTheme.Locked, MuseumUiTheme.Jade, 0.6f);
+            else frame = MuseumUiTheme.Muted;
 
             _baseFrameColor = frame;
             if (frameImage != null) frameImage.color = frame;
+            if (faceImage != null) faceImage.color = lv == 0 && _hasParent ? MuseumUiTheme.Panel : MuseumUiTheme.Surface;
+            if (levelLabel != null) levelLabel.color = maxed ? MuseumUiTheme.Gold : MuseumUiTheme.Muted;
             if (buyButton != null) buyButton.interactable = prereqMet && canAfford;
 
-            // Dim the icon when locked so the whole tile reads as out-of-reach.
+
             if (iconImage != null)
             {
                 var c = iconImage.color;
-                c.a = prereqMet ? 0.85f : 0.28f;
+                c.a = lv == 0 && _hasParent ? .48f : 1f;
                 iconImage.color = c;
             }
         }
@@ -205,60 +222,19 @@ namespace Rebuild.Mining
 
         void HandleClick()
         {
-            // punch animation on every click (success or failure). Even if the
-            // purchase fails, the player sees feedback that their input was registered.
-            CacheBaseTransform();
-            if (_punchCo != null) StopCoroutine(_punchCo);
-            if (gameObject.activeInHierarchy)
-                _punchCo = StartCoroutine(PunchAnim());
-            // SkillTreeManager fires OnPurchaseFailed internally when funds are short.
-            SkillTreeManager.Instance?.TryPurchase(id);
-        }
-
-        void CacheBaseTransform()
-        {
-            if (_baseTransformCached) return;
-            _baseLocalScale = transform.localScale;
-            _baseLocalRotation = transform.localRotation;
-            _baseTransformCached = true;
-        }
-
-        IEnumerator PunchAnim()
-        {
-            const float punchDur = 0.05f;
-            const float settleDur = 0.15f;
-            var punchScale = _baseLocalScale * 0.85f;
-            var punchRot = _baseLocalRotation * Quaternion.Euler(0f, 0f, -14f);
-            float t = 0f;
-            // Quick punch down.
-            while (t < punchDur)
-            {
-                t += Time.unscaledDeltaTime;
-                float k = Mathf.Clamp01(t / punchDur);
-                transform.localScale = Vector3.Lerp(_baseLocalScale, punchScale, k);
-                transform.localRotation = Quaternion.Slerp(_baseLocalRotation, punchRot, k);
-                yield return null;
-            }
-            // Settle back with ease-out cubic.
-            t = 0f;
-            while (t < settleDur)
-            {
-                t += Time.unscaledDeltaTime;
-                float k = Mathf.Clamp01(t / settleDur);
-                float eased = 1f - Mathf.Pow(1f - k, 3f);
-                transform.localScale = Vector3.Lerp(punchScale, _baseLocalScale, eased);
-                transform.localRotation = Quaternion.Slerp(punchRot, _baseLocalRotation, eased);
-                yield return null;
-            }
-            transform.localScale = _baseLocalScale;
-            transform.localRotation = _baseLocalRotation;
-            _punchCo = null;
+            if (_dragController == null) _dragController = GetComponentInParent<SkillTreeDragController>();
+            if (_dragController != null && _dragController.ShouldSuppressClick) return;
+            var manager = SkillTreeManager.Instance;
+            if (manager == null || !manager.TryPurchase(id)) return;
+            if (_purchaseFeedback == null) _purchaseFeedback = GetComponent<SkillPurchaseFeedback>();
+            if (_purchaseFeedback != null) _purchaseFeedback.PlayBought(manager.IsMaxed(id));
         }
 
         IEnumerator RedFlash()
         {
             if (frameImage == null) yield break;
-            var flash = new Color(0.94f, 0.30f, 0.30f, _baseFrameColor.a);
+            var flash = MuseumUiTheme.Danger;
+            flash.a = _baseFrameColor.a;
             const float dur = 0.20f;
             float t = 0f;
             while (t < dur)
@@ -267,20 +243,32 @@ namespace Rebuild.Mining
                 frameImage.color = Color.Lerp(flash, _baseFrameColor, Mathf.Clamp01(t / dur));
                 yield return null;
             }
-            // Final settle — RefreshState will pick the correct steady-state tint.
+
             RefreshState();
             _flashCo = null;
         }
 
         public void OnPointerEnter(PointerEventData eventData)
         {
+            if (_dragController == null) _dragController = GetComponentInParent<SkillTreeDragController>();
+            if (_dragController != null && _dragController.ShouldSuppressClick) return;
+            s_hoveredNode = this;
+            HoveredNodeChanged?.Invoke(id);
             var rt = (RectTransform)transform;
             SkillTreeTooltipUI.Instance?.Show(id, rt.position);
         }
 
         public void OnPointerExit(PointerEventData eventData)
         {
+            ClearHover();
             SkillTreeTooltipUI.Instance?.Hide();
+        }
+
+        void ClearHover()
+        {
+            if (s_hoveredNode != this) return;
+            s_hoveredNode = null;
+            HoveredNodeChanged?.Invoke(null);
         }
     }
 }

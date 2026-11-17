@@ -2,9 +2,9 @@ using UnityEngine;
 
 namespace Rebuild.Mining
 {
-    /// <summary>
-    /// Runtime-generated isometric diamond sprite for placeholder tiles.
-    /// </summary>
+
+
+
     public static class TileSpriteFactory
     {
         const int TexW = 256;
@@ -35,7 +35,7 @@ namespace Rebuild.Mining
             float cy = TexH * 0.5f;
             float halfW = TexW * 0.5f;
             float halfH = TexH * 0.5f;
-            float borderBand = 6f; // pixels of darker border
+            float borderBand = 6f;
 
             for (int y = 0; y < TexH; y++)
             {
@@ -43,10 +43,10 @@ namespace Rebuild.Mining
                 for (int x = 0; x < TexW; x++)
                 {
                     float dx = x - cx + 0.5f;
-                    // Diamond equation: |dx|/halfW + |dy|/halfH <= 1
+
                     float dist = Mathf.Abs(dx) / halfW + Mathf.Abs(dy) / halfH;
-                    // Convert to a pseudo-pixel distance from edge for AA.
-                    // (1 - dist) scaled by ~half the min radius.
+
+
                     float pixDistFromEdge = (1f - dist) * Mathf.Min(halfW, halfH);
                     if (pixDistFromEdge <= 0f)
                     {

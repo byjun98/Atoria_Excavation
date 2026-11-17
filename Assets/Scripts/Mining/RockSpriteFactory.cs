@@ -2,11 +2,11 @@ using UnityEngine;
 
 namespace Rebuild.Mining
 {
-    /// <summary>
-    /// Runtime-generated rock + ore-tint palette for placeholders.
-    /// Single ellipse sprite (shared across all 8 ore types) + per-ore Color tint
-    /// applied via Image.color. Swap for real art in a later polish pass.
-    /// </summary>
+
+
+
+
+
     public static class RockSpriteFactory
     {
         const int TexW = 192;
@@ -26,14 +26,14 @@ namespace Rebuild.Mining
         {
             switch (ore)
             {
-                case OreType.Gold:    return new Color(1.00f, 0.84f, 0.10f, 1f);  // #FFD61A
-                case OreType.Copper:  return new Color(0.85f, 0.43f, 0.18f, 1f);  // #D96E2E
-                case OreType.Iron:    return new Color(0.78f, 0.80f, 0.84f, 1f);  // #C7CCD6
-                case OreType.Cobalt:  return new Color(0.20f, 0.40f, 0.85f, 1f);  // #3366D9
-                case OreType.Uranium: return new Color(0.42f, 0.95f, 0.40f, 1f);  // #6BF266
-                case OreType.Ismium:  return new Color(0.65f, 0.40f, 0.95f, 1f);  // #A666F2
-                case OreType.Iridium: return new Color(0.00f, 0.80f, 0.82f, 1f);  // #00CCD1
-                case OreType.Painite: return new Color(0.85f, 0.20f, 0.45f, 1f);  // #D93373
+                case OreType.Gold:    return new Color(1.00f, 0.84f, 0.10f, 1f);
+                case OreType.Copper:  return new Color(0.85f, 0.43f, 0.18f, 1f);
+                case OreType.Iron:    return new Color(0.78f, 0.80f, 0.84f, 1f);
+                case OreType.Cobalt:  return new Color(0.20f, 0.40f, 0.85f, 1f);
+                case OreType.Uranium: return new Color(0.42f, 0.95f, 0.40f, 1f);
+                case OreType.Ismium:  return new Color(0.65f, 0.40f, 0.95f, 1f);
+                case OreType.Iridium: return new Color(0.00f, 0.80f, 0.82f, 1f);
+                case OreType.Painite: return new Color(0.85f, 0.20f, 0.45f, 1f);
                 default: return Color.gray;
             }
         }
@@ -53,7 +53,7 @@ namespace Rebuild.Mining
             float cy = TexH * 0.5f;
             float a = TexW * 0.5f - 2f;
             float b = TexH * 0.5f - 2f;
-            // Centre highlight (lighter), edge (darker) for a hint of volume.
+
             Color32 baseColor   = new Color32(220, 220, 220, 255);
             Color32 borderColor = new Color32(140, 140, 140, 255);
 
@@ -63,12 +63,12 @@ namespace Rebuild.Mining
                 for (int x = 0; x < TexW; x++)
                 {
                     float dx = x - cx + 0.5f;
-                    // Ellipse equation (dx/a)^2 + (dy/b)^2 <= 1 → inside; convert to pixel distance from edge.
+
                     float n = (dx * dx) / (a * a) + (dy * dy) / (b * b);
                     if (n >= 1f) { pixels[y * TexW + x] = new Color32(0, 0, 0, 0); continue; }
-                    float d = (1f - Mathf.Sqrt(n)) * Mathf.Min(a, b); // approx pixels-from-edge
+                    float d = (1f - Mathf.Sqrt(n)) * Mathf.Min(a, b);
                     byte alpha = (byte)Mathf.RoundToInt(Mathf.Clamp01(d / EdgeAA) * 255f);
-                    float tBorder = Mathf.Clamp01(d / 12f); // 12-pixel falloff into base
+                    float tBorder = Mathf.Clamp01(d / 12f);
                     Color32 c = Lerp(borderColor, baseColor, tBorder);
                     c.a = alpha;
                     pixels[y * TexW + x] = c;

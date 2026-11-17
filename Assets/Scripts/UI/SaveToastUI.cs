@@ -2,14 +2,14 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-// Assembly-CSharp defines a global 'DataPersistenceManager' — always reference
-// Rebuild.Saving.DataPersistenceManager fully qualified here to skip the global collision.
+
+
 
 namespace Rebuild.UI
 {
-    /// <summary>tiny "Saved!" toast in the corner.
-    /// Subscribes to <see cref="DataPersistenceManager.OnSaved"/>; fades the label in/out
-    /// over a short window so it doesn't crowd the active mining HUD.</summary>
+
+
+
     public sealed class SaveToastUI : MonoBehaviour
     {
         [SerializeField] CanvasGroup group;
@@ -47,7 +47,7 @@ namespace Rebuild.UI
         void HandleSaved()
         {
             if (_co != null) StopCoroutine(_co);
-            _co = StartCoroutine(Flash("저장됨!"));
+            _co = StartCoroutine(Flash("저장했습니다."));
         }
 
         public void ShowMessage(string msg)
@@ -60,7 +60,7 @@ namespace Rebuild.UI
         {
             if (label != null) label.text = msg;
             if (group == null) yield break;
-            // Fade in.
+
             float t = 0f;
             while (t < fadeIn)
             {
@@ -69,9 +69,9 @@ namespace Rebuild.UI
                 yield return null;
             }
             group.alpha = 1f;
-            // Hold.
+
             yield return new WaitForSecondsRealtime(showDuration);
-            // Fade out.
+
             t = 0f;
             while (t < fadeOut)
             {

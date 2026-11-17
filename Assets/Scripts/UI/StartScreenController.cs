@@ -5,13 +5,13 @@ using UnityEngine.UI;
 
 namespace Rebuild.UI
 {
-    /// <summary>
-    /// start-screen wire-up.
-    /// Lives on Canvas_StartScreen. Auto-resolves children, sets up runtime-only
-    /// settings (Canvas worldCamera, TMP alignment + outline, AudioSource BGM,
-    /// ParticleSystem dust modules) that the MCP serializer can't reach.
-    /// Replaced by full MainMenu controller in .
-    /// </summary>
+
+
+
+
+
+
+
     [RequireComponent(typeof(Canvas))]
     public sealed class StartScreenController : MonoBehaviour
     {
@@ -34,15 +34,21 @@ namespace Rebuild.UI
 
             AutoResolve();
             ConfigureLogo();
-            ConfigureButtonLayout();
-            ConfigureButtonLabels();
-            ConfigureDust();
+
+            var museumBackdrop = transform.Find("MuseumBackdrop");
+            if (museumBackdrop == null)
+            {
+                ConfigureButtonLayout();
+                ConfigureButtonLabels();
+            }
+            if (!TryAddMuseumRelicDrift(museumBackdrop))
+                ConfigureDust();
             HookButtons();
         }
 
         void ConfigureButtonLabels()
         {
-            // start-screen 4 버튼 한국어 라벨 (source of truth).
+
             SetButtonLabel(playGameBtn, "시작");
             SetButtonLabel(settingsBtn, "설정");
             SetButtonLabel(creditsBtn,  "크레딧");
@@ -71,7 +77,7 @@ namespace Rebuild.UI
             tmp.alignment = TextAlignmentOptions.Center;
             SetNoWrap(tmp);
             tmp.overflowMode = TextOverflowModes.Overflow;
-            var mat = tmp.fontMaterial; // instance per text
+            var mat = tmp.fontMaterial;
             mat.SetColor("_OutlineColor", new Color(0f, 0f, 0f, 1f));
             mat.SetFloat("_OutlineWidth", 0.2f);
             tmp.ForceMeshUpdate(true, true);
@@ -159,15 +165,15 @@ namespace Rebuild.UI
                 DisableTypographyFallbackText(logo.transform);
                 return;
             }
-            // 아토리아 발굴단 리브랜딩. Source of truth so re-runs of any Setup script
-            // can't drift the title back to the old "Keep On Mining" string.
+
+
             logo.text = "아토리아 발굴단";
             logo.alignment = TextAlignmentOptions.Center;
             SetNoWrap(logo);
             logo.overflowMode = TextOverflowModes.Overflow;
 
-            // Outline via material — instance the material so we don't dirty the shared font asset.
-            var mat = logo.fontMaterial; // creates an instance on access
+
+            var mat = logo.fontMaterial;
             mat.SetColor("_OutlineColor", new Color(0f, 0f, 0f, 1f));
             mat.SetFloat("_OutlineWidth", 0.35f);
             logo.ForceMeshUpdate(true, true);
@@ -175,9 +181,9 @@ namespace Rebuild.UI
 
         static void SetNoWrap(TMP_Text tmp)
         {
-            // TMP v4 (Unity 6) deprecated `enableWordWrapping` in favour of `textWrappingMode`.
-            // Try the new API first; fall back to the legacy field via reflection if the build
-            // happens to be on an older TMP package.
+
+
+
 #if UNITY_2023_1_OR_NEWER
             tmp.textWrappingMode = TextWrappingModes.NoWrap;
 #else
@@ -237,13 +243,36 @@ namespace Rebuild.UI
             overlay.gameObject.SetActive(false);
         }
 
+        bool TryAddMuseumRelicDrift(Transform backdrop)
+        {
+            if (backdrop == null) return false;
+            var relic = SpriteLibrary.GetArtifactSprite(ArtifactId.AncientDevice);
+            if (relic == null) return false;
+
+            if (dustEffect != null)
+            {
+                dustEffect.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                dustEffect.gameObject.SetActive(false);
+            }
+
+            var effect = new GameObject("MuseumRelicDrift", typeof(RectTransform), typeof(Canvas), typeof(StartScreenRelicDrift));
+            var rect = (RectTransform)effect.transform;
+            var tint = transform.Find("MuseumBackdropTint");
+            rect.SetParent(tint != null ? tint : backdrop, false);
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            effect.GetComponent<StartScreenRelicDrift>().Initialize(relic);
+            return true;
+        }
+
         void ConfigureDust()
         {
             if (dustEffect == null) return;
 
             ApplyDustArtifactSprite();
 
-            // duration cannot be changed while the system is playing — stop & clear first.
+
             bool wasPlaying = dustEffect.isPlaying;
             if (wasPlaying) dustEffect.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 
@@ -263,8 +292,8 @@ namespace Rebuild.UI
             shape.shapeType = ParticleSystemShapeType.Box;
             shape.scale = new Vector3(20f, 0.5f, 0f);
 
-            // All three axes must share the same MinMaxCurve mode, else Unity warns
-            // "Particle Velocity curves must all be in the same mode".
+
+
             var velocityOverLifetime = dustEffect.velocityOverLifetime;
             velocityOverLifetime.enabled = true;
             velocityOverLifetime.x = new ParticleSystem.MinMaxCurve(-0.2f, 0.2f);
@@ -320,7 +349,7 @@ namespace Rebuild.UI
 
         void OnPlayGame()
         {
-            // scale-circle transition + activate main menu via MainMenuController.
+
             if (MainMenuController.Instance != null)
             {
                 MainMenuController.Instance.PlayGame();

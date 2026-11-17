@@ -5,8 +5,8 @@ using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>Mine panel UI.
-    /// Subscribes to MineManager + GoldAndOreMechanics for live progress and upgrade affordability.</summary>
+
+
     public sealed class TheMineUI : MonoBehaviour
     {
         [Header("Progress")]
@@ -46,8 +46,8 @@ namespace Rebuild.Mining
             if (speedButton != null)
             {
                 speedButton.onClick.RemoveAllListeners();
-                // IsUnlocked false 시 speedButton 을 "잠금 해제" 버튼으로 재용. Refresh() 가
-                // 라벨/가격 텍스트를 unlock 모드 / 업그레이드 모드 로 토글.
+
+
                 speedButton.onClick.AddListener(HandleSpeedClick);
             }
             if (materialButton != null)
@@ -124,11 +124,11 @@ namespace Rebuild.Mining
                     _iconFlashCo = StartCoroutine(IconFlash());
                 }
             }
-            if (lastOreLabel != null) lastOreLabel.text = $"직전: {OreLocalization.OreNameKr(ore)} 주괴 +{amount}";
+            if (lastOreLabel != null) lastOreLabel.text = $"최근 획득: {OreLocalization.OreNameKr(ore)} 주괴 {amount}개";
 
-            // fly N popups from MineEntrance to the ResourcePanel row for this ore.
-            // gameObject.activeInHierarchy gate ensures Mining Session (panel inactive) and other
-            // tabs (panel SetActive false) don't spawn invisible popups burning GC.
+
+
+
             if (gameObject.activeInHierarchy
                 && popupSourceRect != null && popupTargetPanel != null && amount > 0)
             {
@@ -139,28 +139,28 @@ namespace Rebuild.Mining
 
         void SpawnOnePopup(OreType ore, int index)
         {
-            // Resolve the shared canvas — MineEntranceVisual and ResourcePanel rows both live
-            // under Canvas_U_MainMenuAndUpgrades so their anchored coords share a space once we
-            // route everything through that root RectTransform.
+
+
+
             var hostCanvas = popupSourceRect.GetComponentInParent<Canvas>();
             if (hostCanvas == null) return;
             var rootRT = (RectTransform)hostCanvas.rootCanvas.transform;
             Camera cam = hostCanvas.rootCanvas.worldCamera;
 
-            // Start = MineEntrance world pos → canvas-local, plus random offset inside the
-            // entrance area so multiple popups don't stack into a single dot.
+
+
             Vector2 startLocal;
             Vector2 entranceScreen = RectTransformUtility.WorldToScreenPoint(cam, popupSourceRect.position);
             if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(rootRT, entranceScreen, cam, out startLocal))
                 startLocal = Vector2.zero;
             startLocal += new Vector2(UnityEngine.Random.Range(-60f, 60f), UnityEngine.Random.Range(-30f, 30f));
 
-            // Target = row icon world pos → canvas-local.
+
             Vector2 targetLocal;
             var rowRT = popupTargetPanel.GetRowIconRT(ore);
             if (rowRT == null)
             {
-                // No row wired — silently skip; tick already credited counter via MineManager.
+
                 return;
             }
             Vector2 targetScreen = RectTransformUtility.WorldToScreenPoint(cam, rowRT.position);
@@ -176,15 +176,15 @@ namespace Rebuild.Mining
                 tint = RockSpriteFactory.GetOreColor(ore);
             }
 
-            // amount > 1 → stagger 0.05s per popup so they trickle out instead of teleporting.
+
             float delay = index * 0.05f;
             var capturedOre = ore;
             MineOrePopupFx.Spawn(rootRT, startLocal, targetLocal, sprite, tint,
                 size: 60f, spawnDelay: delay,
                 onArrived: () =>
                 {
-                    // Collect SFX (one of N popups may fire on the same frame; the
-                    // shared AudioSource layers them naturally for the "ka-ching" feel).
+
+
                     Rebuild.Audio.AudioManager.Instance?.Play("MineCollect");
                     if (popupTargetPanel != null) popupTargetPanel.PulseRow(capturedOre);
                 });
@@ -194,7 +194,7 @@ namespace Rebuild.Mining
 
         void HandleUpgradeFailed()
         {
-            // Flash whichever button is currently unaffordable — both is fine if both fail.
+
             if (gameObject.activeInHierarchy)
             {
                 if (speedButtonImage != null && _speedFlashCo == null)
@@ -209,8 +209,9 @@ namespace Rebuild.Mining
             var mm = MineManager.Instance;
             if (mm == null) return;
 
-            // TheMine 잠금 / 활성 view 토글.
+
             bool unlocked = mm.IsUnlocked;
+            ConfigureMuseumStatusLayout(unlocked);
             if (progressSlider != null) progressSlider.gameObject.SetActive(unlocked);
             if (lastOreIcon != null) lastOreIcon.gameObject.SetActive(unlocked);
             if (lastOreLabel != null) lastOreLabel.gameObject.SetActive(unlocked);
@@ -218,10 +219,10 @@ namespace Rebuild.Mining
 
             if (!unlocked)
             {
-                // 잠금 면 — statsLabel = 안내 / speedButton 라벨 = "잠금 해제 (돌 500)".
+
                 var unlockCurrencyKr = OreLocalization.OreNameKr(mm.UnlockCurrency);
                 if (statsLabel != null)
-                    statsLabel.text = $"자동 발굴터가 잠겨 있습니다.\n{unlockCurrencyKr} {MineManager.UnlockPrice}을 지불해 잠금 해제하세요.";
+                    statsLabel.text = $"자동 발굴터가 잠겨 있습니다.\n{unlockCurrencyKr} {MineManager.UnlockPrice}개로 열 수 있습니다.";
                 if (speedLevelLabel != null) speedLevelLabel.text = "잠금 해제";
                 if (speedPriceLabel != null) speedPriceLabel.text = $"{unlockCurrencyKr} {MineManager.UnlockPrice}";
                 if (materialLevelLabel != null) materialLevelLabel.text = string.Empty;
@@ -231,12 +232,12 @@ namespace Rebuild.Mining
             }
 
             if (statsLabel != null)
-                statsLabel.text = $"발굴 주기: {mm.CurrentMiningTime:0.0}초마다 주괴 +{mm.CurrentBarsMined}";
+                statsLabel.text = $"{mm.BaseMiningTime:0.0}초마다 주괴를 {mm.CurrentBarsMined}개 얻습니다.";
 
             if (speedLevelLabel != null)
                 speedLevelLabel.text = $"속도  {mm.SpeedLevel}/{mm.MaxSpeedLevel}";
             if (speedPriceLabel != null)
-                // 후반 가격 (수십만 단위) K/M/B/T 축약.
+
                 speedPriceLabel.text = mm.IsSpeedMaxed ? "최대" : $"{OreLocalization.OreNameKr(mm.SpeedCurrency)} {Rebuild.Util.FormatNumbers.Format(mm.GetSpeedNextPrice())}";
 
             if (materialLevelLabel != null)
@@ -247,13 +248,26 @@ namespace Rebuild.Mining
             RefreshAffordability();
         }
 
+        void ConfigureMuseumStatusLayout(bool unlocked)
+        {
+
+            if (statsLabel == null || statsLabel.transform.parent == null ||
+                statsLabel.transform.parent.Find("ChanceHud/MuseumChanceTitle") == null) return;
+            if (lastOreIcon != null && lastOreIcon.transform.parent != null)
+                lastOreIcon.transform.parent.gameObject.SetActive(unlocked);
+            var rect = statsLabel.rectTransform;
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
+            rect.anchoredPosition = new Vector2(0f, unlocked ? -418f : -378f);
+            rect.sizeDelta = new Vector2(1080f, unlocked ? 36f : 76f);
+        }
+
         void RefreshAffordability()
         {
             var mm = MineManager.Instance;
             var ore = GoldAndOreMechanics.Instance;
             if (mm == null) return;
 
-            // speedButton 이 잠금 해제 모드인지 업그레이드 모드인지 분기.
+
             if (!mm.IsUnlocked)
             {
                 bool unlockAfford = ore != null && ore.GetCount(mm.UnlockCurrency) >= MineManager.UnlockPrice;

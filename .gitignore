@@ -4,19 +4,29 @@
 /Temp/
 /Obj/
 /UserSettings/
+/ProjectSettings/ShaderGraphSettings.asset
 /MemoryCaptures/
+/.utmp/
+/tmp/
 
 # Local workflow state
 /.codex/
+/.claude/
+/Tools/
+/presentation_assets/
 
 # Build and export outputs
 /Build/
+/build/
 /Builds/
 *.apk
 *.aab
 *.unitypackage
 *.zip
 *.log
+*.mp4
+*.mkv
+*.webm
 
 # Signing, secrets, and local environment files
 *.keystore
@@ -49,9 +59,16 @@
 /Assets/Resources/references.meta
 /Assets/Resources/FX/
 /Assets/Resources/FX.meta
-/Assets/Resources/FX/ProjectileParticles/
-/Assets/Resources/FX/Projectiles/
 /Assets/Plugins/
+/Assets/AllIn1SpriteLighting/
+/Assets/AllIn1SpriteLighting.meta
+/Assets/AssetKits/
+/Assets/AssetKits.meta
+/Assets/Feel/
+/Assets/Feel.meta
+/Assets/Motion Titles Pack/
+/Assets/Motion Titles Pack.meta
+/Packages/com.febucci.text-animator-unity/
 /Assets/Plugins.meta
 /Assets/Shader/*
 !/Assets/Shader.meta
@@ -84,6 +101,8 @@
 /Assets/Resources/style sheets.meta
 /Assets/Resources/Sprites/UI/Typography/Title_Atoria.png
 /Assets/Resources/Sprites/UI/Typography/Title_Atoria.png.meta
+/Assets/Resources/MuseumUI/NodeShine.mat
+/Assets/Resources/MuseumUI/NodeShine.mat.meta
 /Assets/Resources/TextAnimatorSettings.asset
 /Assets/Resources/TextAnimatorSettings.asset.meta
 /Assets/Resources/DebugUICanvas.prefab

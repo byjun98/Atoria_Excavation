@@ -12,7 +12,7 @@ Shader "TextMeshPro/Sprite" {
 		_ClipRect ("Clip Rect", Vector) = (-32767,-32767,32767,32767)
 		[Toggle(UNITY_UI_ALPHACLIP)] _UseUIAlphaClip ("Use Alpha Clip", Float) = 0
 	}
-	//DummyShaderTextExporter
+
 	SubShader{
 		Tags { "RenderType"="Opaque" }
 		LOD 200

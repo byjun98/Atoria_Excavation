@@ -2,13 +2,13 @@ using UnityEngine;
 
 namespace Rebuild.Stats
 {
-    /// <summary>milestones (6) + (10) = 16 achievements.
-    /// Trigger is evaluated against <see cref="StatsManager"/> every time a relevant stat ticks
-    /// (see AchievementsManager). Indices are persisted directly into the DTO so
-    /// APPEND-ONLY — never reorder.</summary>
+
+
+
+
     public enum AchievementId
     {
-        // ---- (0..5) — DO NOT REORDER ----
+
         FirstRock = 0,
         HundredRocks = 1,
         FirstCraft = 2,
@@ -16,25 +16,25 @@ namespace Rebuild.Stats
         AllArtifactsFound = 4,
         ThousandGold = 5,
 
-        // ---- (6..15) — append-only ----
-        ExpertMiner       = 6,  // RocksDestroyed >= 10_000
-        MineMaster200K    = 7,  // RocksDestroyed >= 200_000
-        Talented80        = 8,  // MaxLevelReached >= 80
-        LeveledUp50       = 9,  // TotalLevelUps >= 50
-        Marathoner        = 10, // TimeSpentMiningSec >= 3600 (1 hour)
-        MiningMarathon100 = 11, // SessionsCompleted >= 100
-        LuckyStrike       = 12, // XpDoublesTriggered >= 50 (PurpleRing artifact triggered)
-        BarsmithApprentice= 13, // BarsMined_TheMine >= 100
-        AllPickaxe        = 14, // PickaxesCraftedCount >= 14 (all 14 pickaxes crafted)
-        BankBank          = 15, // OreMined_Gold >= 1_000_000
 
-        // ---- append-only, 6 new ----
-        PotionApprentice    = 16, // PotionsDrank >= 10 (PotionDrinker / PotionChugger 사용)
-        ChestHunter         = 17, // ChestsOpened + GoldenChestsOpened >= 50 (composite — watch ChestsOpened)
-        BeamDynamitePlazma  = 18, // 4 projectile types all fired (composite — watch ProjectilesFired_Beam>=1)
-        BeatGame            = 19, // isEndingCompleted (composite — TheEndingManager state)
-        TheMineEnthusiast   = 20, // BarsMined_TheMine >= 10000
-        SignSeeker          = 21, // CampfiresSpawned >= 5 (proxy — ItsASign + Camper 활용)
+        ExpertMiner       = 6,
+        MineMaster200K    = 7,
+        Talented80        = 8,
+        LeveledUp50       = 9,
+        Marathoner        = 10,
+        MiningMarathon100 = 11,
+        LuckyStrike       = 12,
+        BarsmithApprentice= 13,
+        AllPickaxe        = 14,
+        BankBank          = 15,
+
+
+        PotionApprentice    = 16,
+        ChestHunter         = 17,
+        BeamDynamitePlazma  = 18,
+        BeatGame            = 19,
+        TheMineEnthusiast   = 20,
+        SignSeeker          = 21,
     }
 
     public readonly struct AchievementInfo
@@ -55,7 +55,7 @@ namespace Rebuild.Stats
     {
         public const int Count = 22;
 
-        // Tints reused on the unlock popup background + the list-cell icon.
+
         static readonly Color Bronze = new Color(0.80f, 0.50f, 0.25f);
         static readonly Color Silver = new Color(0.80f, 0.80f, 0.85f);
         static readonly Color Iron = new Color(0.55f, 0.55f, 0.60f);
@@ -67,7 +67,7 @@ namespace Rebuild.Stats
         static readonly Color Royal = new Color(0.50f, 0.30f, 0.85f);
         static readonly Color Teal = new Color(0.20f, 0.75f, 0.75f);
 
-        // 한국어 업적 라벨/설명. 임계값은 동일.
+
         public static AchievementInfo Get(AchievementId id) => id switch
         {
             AchievementId.FirstRock => new AchievementInfo(
@@ -82,7 +82,7 @@ namespace Rebuild.Stats
                 "유물 수집가", "유물 14개 모두 발견.", StatId.ArtifactsFoundCount, 14, Gold),
             AchievementId.ThousandGold => new AchievementInfo(
                 "돌 1,000", "돌 1,000개 채굴.", StatId.OreMined_Gold, 1000, Yellow),
-            // ---- ---
+
             AchievementId.ExpertMiner => new AchievementInfo(
                 "숙련 발굴꾼", "발굴지 10,000개 채굴.", StatId.RocksDestroyed, 10000, Diamond),
             AchievementId.MineMaster200K => new AchievementInfo(
@@ -103,7 +103,7 @@ namespace Rebuild.Stats
                 "곡괭이 수집가", "곡괭이 14개 모두 제작.", StatId.PickaxesCraftedCount, 14, Diamond),
             AchievementId.BankBank => new AchievementInfo(
                 "돌 백만장자", "돌 1,000,000개 채굴.", StatId.OreMined_Gold, 1000000, Yellow),
-            // ---- ---
+
             AchievementId.PotionApprentice => new AchievementInfo(
                 "물약 견습", "물약 10회 마심.", StatId.PotionsDrank, 10, Royal),
             AchievementId.ChestHunter => new AchievementInfo(

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Rebuild.Mining
 {
-    /// <summary>Timer_frame HUD. Shows mm:ss countdown, tints red near zero.</summary>
+
     public sealed class MiningTimerUI : MonoBehaviour
     {
         [SerializeField] TMP_Text timerText;

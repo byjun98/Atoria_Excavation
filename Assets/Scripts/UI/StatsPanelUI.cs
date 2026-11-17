@@ -6,10 +6,10 @@ using UnityEngine.UI;
 
 namespace Rebuild.UI
 {
-    /// <summary>modal stats overlay launched from MainMenu's statsBtn (top-right).
-    /// Lives on Canvas_StatsPanel (sortingOrder 305 — above MainMenu, below the
-    /// circle transition/save toast/achievement popup). Subscribes to StatsManager + Achievements
-    /// for live updates while open.</summary>
+
+
+
+
     public sealed class StatsPanelUI : MonoBehaviour
     {
         public static StatsPanelUI Instance { get; private set; }
@@ -88,7 +88,7 @@ namespace Rebuild.UI
 
         void HandleStatChanged(StatId id, long value)
         {
-            // K/M/B/T 축약. 100k 이상 시 자동 축약, 그 이하는 N0 (1,234) 그대로.
+
             if (_statLabels.TryGetValue(id, out var label) && label != null)
                 label.text = Rebuild.Util.FormatNumbers.Format(value);
         }

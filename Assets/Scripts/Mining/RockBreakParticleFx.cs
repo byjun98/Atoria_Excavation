@@ -1,129 +1,147 @@
-using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace Rebuild.Mining
 {
-    /// <summary>burst of small rock chunks that fly outward + fade when a rock breaks.
-    /// Mirrors the original <c>RockMechanics.RockBreakParticle()</c> (pooled ParticleSystem prefab,
-    /// localScale=2.6 for rocks / 10 for BigRock) using UGUI Image children since the rest of our
-    /// mining scene is canvas-based.
-    /// <para>Spawns one root GameObject under <paramref name="parent"/> (typically the rock's
-    /// TileRow) which fans out N chunks at random angles, lerps them outward 50–120 px while
-    /// fading alpha 1→0 over <see cref="Lifetime"/> seconds, then destroys itself. Lives as a
-    /// sibling of the rock so the rock's own fade animation doesn't take the chunks with it.</para>
-    /// </summary>
-    public sealed class RockBreakParticleFx : MonoBehaviour
+
+    public sealed class RockBreakParticleFx : MaskableGraphic
     {
-        const float Lifetime = 0.45f;
-        const int DefaultChunkCount = 7;
-        const float DefaultChunkSize = 28f;
-        const float MinTravel = 50f;
-        const float MaxTravel = 120f;
+        const int MaxChunks = 16;
+        const int MaxIdle = 64;
+        const float Lifetime = .45f;
+        static readonly Stack<RockBreakParticleFx> s_idle = new Stack<RockBreakParticleFx>();
+        static readonly Color RingColor = new Color(1f, .69f, .33f);
+        static readonly Color Hot = new Color(1f, .93f, .70f);
+        static readonly Color Stone = new Color(.42f, .32f, .25f);
 
         struct Chunk
         {
-            public RectTransform rt;
-            public Image img;
-            public Vector2 start;
-            public Vector2 target;
-            public float rotSpeed; // deg/sec
+            public Vector2 Target;
+            public float Radius;
+            public float Spin;
         }
 
-        Chunk[] _chunks;
+        readonly Chunk[] _chunks = new Chunk[MaxChunks];
+        int _count;
+        float _started;
+        float _spread;
 
-        /// <summary>Spawn a one-shot particle burst at <paramref name="anchoredPos"/> inside
-        /// <paramref name="parent"/>. <paramref name="spread"/> scales the chunk count + travel
-        /// distance for bigger explosions (BigRock passes ~3f, regular rocks pass 1f).</summary>
         public static RockBreakParticleFx Spawn(Transform parent, Vector2 anchoredPos, float spread = 1f)
         {
             if (parent == null) return null;
-            var go = new GameObject("RockBreakParticleFx", typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            var rt = (RectTransform)go.transform;
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
+            RockBreakParticleFx fx = null;
+            while (fx == null && s_idle.Count > 0) fx = s_idle.Pop();
+            if (fx == null)
+            {
+                var go = new GameObject("RockBreakParticleFx", typeof(RectTransform), typeof(CanvasRenderer));
+                go.SetActive(false);
+                fx = go.AddComponent<RockBreakParticleFx>();
+                fx.raycastTarget = false;
+            }
+            var rt = fx.rectTransform;
+            rt.SetParent(parent, false);
+            rt.anchorMin = rt.anchorMax = new Vector2(.5f, .5f);
+            rt.pivot = new Vector2(.5f, .5f);
             rt.anchoredPosition = anchoredPos;
-            rt.sizeDelta = Vector2.zero;
+            rt.sizeDelta = Vector2.one * (330f * Mathf.Max(1f, spread));
             rt.SetAsLastSibling();
-
-            var fx = go.AddComponent<RockBreakParticleFx>();
-            fx.Init(spread);
+            fx.SetChunks(spread);
+            fx._started = Time.unscaledTime - Time.unscaledDeltaTime;
+            fx.gameObject.SetActive(true);
             return fx;
         }
 
-        void Init(float spread)
+        void SetChunks(float spread)
         {
-            int chunkCount = Mathf.Clamp(Mathf.RoundToInt(DefaultChunkCount * Mathf.Sqrt(Mathf.Max(0.5f, spread))), 4, 16);
-            var sprite = RockSpriteFactory.GetRockSprite();
-            float baseSize = DefaultChunkSize * Mathf.Max(0.6f, Mathf.Sqrt(spread));
-            float travelScale = Mathf.Max(0.6f, spread);
-
-            _chunks = new Chunk[chunkCount];
-            for (int i = 0; i < chunkCount; i++)
+            _count = Mathf.Clamp(Mathf.RoundToInt(7 * Mathf.Sqrt(Mathf.Max(.5f, spread))), 4, MaxChunks);
+            _spread = Mathf.Max(.6f, spread);
+            float size = 28f * Mathf.Max(.6f, Mathf.Sqrt(spread));
+            for (int i = 0; i < _count; i++)
             {
-                // Random angle around the origin so the burst looks omni-directional rather than
-                // a tidy ring (we still bias slightly upward to feel like a rock cracking).
-                float angle = (i * (Mathf.PI * 2f / chunkCount)) + Random.Range(-0.4f, 0.4f);
-                float dist = Random.Range(MinTravel, MaxTravel) * travelScale;
-                float upwardBias = Mathf.Lerp(0.1f, 0.35f, Random.value);
-                Vector2 dir = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle) + upwardBias).normalized;
-                Vector2 target = dir * dist;
 
-                var cgo = new GameObject($"chunk_{i}", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                cgo.transform.SetParent(transform, false);
-                var crt = (RectTransform)cgo.transform;
-                crt.anchorMin = crt.anchorMax = new Vector2(0.5f, 0.5f);
-                crt.pivot = new Vector2(0.5f, 0.5f);
-                crt.anchoredPosition = Vector2.zero;
-                float sz = baseSize * Random.Range(0.75f, 1.25f);
-                crt.sizeDelta = new Vector2(sz, sz);
-
-                var img = cgo.GetComponent<Image>();
-                img.sprite = sprite;
-                img.preserveAspect = true;
-                img.raycastTarget = false;
-                // Stone-grey base with a hint of warmth so chunks read against the dirt tile.
-                img.color = new Color(0.42f, 0.36f, 0.32f, 1f);
-
+                float angle = i * (Mathf.PI * 2f / _count) + Random.Range(-.4f, .4f);
+                float distance = Random.Range(50f, 120f) * _spread;
+                float upward = Mathf.Lerp(.1f, .35f, Random.value);
+                var direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle) + upward).normalized;
                 _chunks[i] = new Chunk
                 {
-                    rt = crt,
-                    img = img,
-                    start = Vector2.zero,
-                    target = target,
-                    rotSpeed = Random.Range(-540f, 540f),
+                    Target = direction * distance,
+                    Radius = size * Random.Range(.75f, 1.25f) * .52f,
+                    Spin = Random.Range(-540f, 540f) * Mathf.Deg2Rad,
                 };
             }
-
-            StartCoroutine(Lifecycle());
         }
 
-        IEnumerator Lifecycle()
+        void Update()
         {
-            float t = 0f;
-            while (t < Lifetime)
+            if (Time.unscaledTime - _started < Lifetime)
             {
-                t += Time.unscaledDeltaTime;
-                float k = Mathf.Clamp01(t / Lifetime);
-                // Ease-out so chunks fly fast at the start, slow as they fade.
-                float pos = 1f - Mathf.Pow(1f - k, 2.4f);
-                float alpha = 1f - k;
-                for (int i = 0; i < _chunks.Length; i++)
-                {
-                    var c = _chunks[i];
-                    if (c.rt == null) continue;
-                    c.rt.anchoredPosition = Vector2.LerpUnclamped(c.start, c.target, pos);
-                    c.rt.localRotation = Quaternion.Euler(0f, 0f, c.rotSpeed * t);
-                    if (c.img != null)
-                    {
-                        var col = c.img.color; col.a = alpha;
-                        c.img.color = col;
-                    }
-                }
-                yield return null;
+                SetVerticesDirty();
+                return;
             }
-            Destroy(gameObject);
+
+            gameObject.SetActive(false);
+            if (s_idle.Count >= MaxIdle) { Destroy(gameObject); return; }
+            transform.SetParent(ProjectileLauncher.PoolParent, false);
+            s_idle.Push(this);
+        }
+
+        protected override void OnPopulateMesh(VertexHelper mesh)
+        {
+            mesh.Clear();
+            float age = Time.unscaledTime - _started;
+            float k = Mathf.Clamp01(age / Lifetime);
+            if (k >= 1f) return;
+
+            AddImpact(mesh, age);
+            float travel = 1f - Mathf.Pow(1f - k, 2.4f);
+            Color shell = Color.Lerp(Hot, Stone, Mathf.Clamp01(k * 4f));
+            shell.a = 1f - k;
+            Color lit = Color.Lerp(Hot, RingColor, k);
+            lit.a = shell.a * .78f;
+            for (int i = 0; i < _count; i++)
+            {
+                ref var chunk = ref _chunks[i];
+                Vector2 pos = chunk.Target * travel - Vector2.up * (155f * age * age * _spread);
+                float angle = chunk.Spin * age;
+                var axis = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * (chunk.Radius * (1f - .25f * k));
+                var normal = new Vector2(-axis.y, axis.x) * .69f;
+                int first = mesh.currentVertCount;
+                mesh.AddVert(pos + axis, lit, Vector2.zero);
+                mesh.AddVert(pos + normal, shell, Vector2.zero);
+                mesh.AddVert(pos - axis, shell, Vector2.zero);
+                mesh.AddVert(pos - normal, lit, Vector2.zero);
+                mesh.AddTriangle(first, first + 1, first + 2);
+                mesh.AddTriangle(first, first + 2, first + 3);
+            }
+        }
+
+        void AddImpact(VertexHelper mesh, float age)
+        {
+            const float duration = .18f;
+            float k = Mathf.Clamp01(age / duration);
+            if (k >= 1f) return;
+            float radius = Mathf.Lerp(13f, 88f, 1f - (1f - k) * (1f - k)) * _spread;
+            var edge = Color.Lerp(Hot, RingColor, k);
+            edge.a = (1f - k) * (1f - k) * .78f;
+            Color empty = new Color(edge.r, edge.g, edge.b, 0);
+            int first = mesh.currentVertCount;
+            const int sides = 12;
+            for (int i = 0; i <= sides; i++)
+            {
+                float a = i * (Mathf.PI * 2 / sides);
+                var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a) * .45f);
+                mesh.AddVert(dir * (radius + 4f * _spread), empty, Vector2.zero);
+                mesh.AddVert(dir * radius, edge, Vector2.zero);
+                mesh.AddVert(dir * (radius - 6f * _spread), empty, Vector2.zero);
+                if (i == 0) continue;
+                int c = first + i * 3;
+                mesh.AddTriangle(c - 3, c, c + 1);
+                mesh.AddTriangle(c - 3, c + 1, c - 2);
+                mesh.AddTriangle(c - 2, c + 1, c + 2);
+                mesh.AddTriangle(c - 2, c + 2, c - 1);
+            }
         }
     }
 }
